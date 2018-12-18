@@ -1,1 +1,1 @@
-from ttd import * 
+from .ttd import *
