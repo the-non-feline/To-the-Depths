@@ -323,7 +323,4 @@ class TTD_Bot(discord.Client, storage.Deconstructable):
           
           await self.edit_tasks(-1) 
 
-with open('storage.pkl', mode='r+b') as storage_file: 
-  ttd_bot = TTD_Bot(storage_file) 
-
-  ttd_bot.run('NDg2MjgzOTM0MjEzMzQxMTg1.Dm820w.6XY8w4w52Co6P6HahK34QpAXX8I') 
+        
