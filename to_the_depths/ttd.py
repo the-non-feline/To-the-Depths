@@ -323,4 +323,3 @@ class TTD_Bot(discord.Client, storage.Deconstructable):
           
           await self.edit_tasks(-1) 
 
-        
