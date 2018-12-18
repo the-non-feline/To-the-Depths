@@ -5,7 +5,7 @@ import asyncio
 import logging
 import os
 import copy
-from .. import discord
+import discord
 import ttd_tools
 from ttd_tools import print
 import game as g
