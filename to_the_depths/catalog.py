@@ -4,8 +4,8 @@ import logging
 import asyncio 
 import copy
 import math
-import ttd_tools
-from ttd_tools import print
+from . import ttd_tools
+from .ttd_tools import print
 
 '''
 Functions that propagate Entity.check_current_hp()'s boolean: 
