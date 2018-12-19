@@ -1,6 +1,6 @@
 import copy
-import ttd_tools
-from ttd_tools import print
+from . import ttd_tools
+from .ttd_tools import print
 
 class Deconstructable: 
   def __init__(self): 
