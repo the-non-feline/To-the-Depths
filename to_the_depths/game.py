@@ -2,9 +2,8 @@ import random
 import asyncio
 import logging
 import discord
-import ttd_tools
-from ttd_tools import print
-import catalog
+from . import ttd_tools, catalog
+from .ttd_tools import print
 
 class Game(ttd_tools.Game_Object): 
   def __init__(self, client, channel, queue=()): 
