@@ -3,10 +3,10 @@ import time
 import discord
 
 def print(*values, sep=' ', end='\n'): 
-  builtins.print('{}: '.format(time.asctime()), end='') 
-  builtins.print(*values, sep=sep, end=end + '\n') 
+	builtins.print('{} - '.format(time.asctime()), end='', flush=True) 
+	builtins.print(*values, sep=sep, end=end + '\n', flush=True) 
 
-import storage
+from . import storage
 
 class Game_Object(storage.Deconstructable): 
   def __init__(self, client, channel): 
