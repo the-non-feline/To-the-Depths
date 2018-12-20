@@ -1,6 +1,6 @@
 import discord
-from . import storage, print_function
-from .print_function import print
+from . import storage, printing
+from .printing import print
 
 class Game_Object(storage.Deconstructable): 
   def __init__(self, client, channel): 
