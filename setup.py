@@ -1,3 +1,3 @@
 import setuptools
 
-setuptools.setup(name='To the Depths', version='0.1', packages=['to_the_depths'], install_requires=['discord'], dependency_links=['https://github.com/Rapptz/discord.py@rewrite#egg=discord.py[voice]']) 
+setuptools.setup(name='To the Depths', version='0.1', packages=['to_the_depths'], install_requires=['discord'], dependency_links=['git+https://github.com/Rapptz/discord.py@rewrite#egg=discord.py[voice]']) 
