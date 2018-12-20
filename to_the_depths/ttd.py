@@ -106,7 +106,7 @@ class TTD_Bot(discord.Client, storage.Deconstructable):
 
       print(reconstructed_game) 
     
-    await self.change_presence(status=discord.Status.online, activity=discord.Game('To the Depths')) 
+    await self.change_presence(status=discord.Status.online, activity=discord.Game()) 
 
     self.listening = True
 
