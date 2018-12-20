@@ -1,11 +1,11 @@
+import math
 import random
 import discord
 import logging
 import asyncio 
 import copy
-import math
-from . import ttd_tools
-from .ttd_tools import print
+from . import ttd_tools, printing
+from .printing import print
 
 '''
 Functions that propagate Entity.check_current_hp()'s boolean: 
