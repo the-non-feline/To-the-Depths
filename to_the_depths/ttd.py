@@ -6,8 +6,8 @@ import logging
 import os
 import copy
 import discord
-from . import ttd_tools, game as g, storage
-from .ttd_tools import print
+from . import printing, storage, game as g
+from .printing import print
 
 thumbs_up_emoji = chr(0x1F44D) 
 thumbs_down_emoji = chr(0x1F44E) 
