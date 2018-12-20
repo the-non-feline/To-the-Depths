@@ -1,12 +1,6 @@
-import builtins
-import time
 import discord
-
-def print(*values, sep=' ', end='\n'): 
-	builtins.print('{} - '.format(time.asctime()), end='', flush=True) 
-	builtins.print(*values, sep=sep, end=end + '\n', flush=True) 
-
-from . import storage
+from . import storage, print_function
+from .print_function import print
 
 class Game_Object(storage.Deconstructable): 
   def __init__(self, client, channel): 
