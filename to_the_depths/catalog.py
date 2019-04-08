@@ -1,0 +1,3272 @@
+import math
+import random
+import enum
+# noinspection PyPackageRequirements
+import discord
+import logging
+import asyncio
+import copy
+import chars
+from chars import * 
+import printing
+from printing import print
+import ttd_tools
+from ttd_tools import format_iterable, make_list
+
+'''
+Functions that propagate Entity.check_death()'s boolean: 
+Entity.take_damage() 
+Entity.check_pressure_damage() 
+Player.take_oxygen_damage() 
+Player.check_current_oxygen() 
+
+'''
+
+''' 
+
+CURRENTLY WORKING ON: 
+on_shutdown() and on_turn_on() functions
+some global events ignore hp requirement
+Entity.hp_multiplier
+
+''' 
+
+# useful functions
+
+# top is the list to subtract from, bottom is the list to subtract from that
+def subtract_lists(top, bottom):
+    difference = top.copy()
+
+    for item in bottom:
+        difference.remove(item)
+
+    return difference
+
+# for all the random needs
+# Die was honestly the best name i could think of
+class Die:
+    # this returns the emoji, followed by the name
+    @staticmethod
+    def flip_coin(): 
+        return random.choice(('heads', 'tails')) 
+
+    @staticmethod
+    def roll_die():
+        return random.randint(1, 6) 
+    
+    '''
+    @staticmethod
+    def select_creature(client, channel, level):
+        # makes sure that there are actually creatures in that level
+        if len(levels[level]['creatures']) > 0:
+            level_creatures = levels[level]['creatures']
+            sorted_creatures = sorted(level_creatures)
+
+            # calculates total amount of creatures here
+            total_amount = 0
+
+            for creature in sorted_creatures:
+                total_amount += level_creatures[creature]
+
+            # picks a random creature here
+            to_pick = random.randint(1, total_amount)
+            running_sum = 0
+
+            for creature in sorted_creatures:
+                running_sum += level_creatures[creature]
+
+                if running_sum >= to_pick:
+                    return creature(client, channel, current_level=level) 
+    ''' 
+
+def action(func): 
+    async def action_func(self, report, *args, **kwargs): 
+        if self.is_a(Entity): 
+            async with self.acting(report): 
+                print('executing {}'.format(func)) 
+
+                result = await func(self, report, *args, **kwargs) 
+
+                print('finished executing {}'.format(func)) 
+
+                return result
+        else: 
+            return await func(self, report, *args, **kwargs) 
+    
+    return action_func
+
+class Events(ttd_tools.Game_Object): 
+    @action
+    async def on_game_turn_start(self, report):
+        pass
+    
+    @action
+    async def on_game_turn_end(self, report):
+        pass
+    
+    @action
+    async def on_battle_start(self, report):
+        pass
+
+    @action
+    async def on_battle_end(self, report):
+        pass
+
+    @action
+    async def on_battle_round_start(self, report):
+        pass
+
+    @action
+    async def on_battle_round_end(self, report):
+        pass
+
+    @action
+    async def on_first_hit(self, report):
+        pass
+
+    @action
+    async def on_win_coinflip(self, report):
+        pass
+    
+    @action
+    async def on_move_levels(self, report, move_by): 
+        pass
+
+class All: 
+    name = 'All' 
+
+# noinspection PyMethodOverriding
+
+class Levels(enum.Enum): 
+    def __init__(self, value): 
+        self.creatures = {} 
+        self.total_creatures = 0
+        self.gatherables = {} 
+        self.mineables = {} 
+
+        enum.Enum.__init__(self) 
+    
+    def set_stats(self, stats): 
+        level = stats[self.value] 
+
+        self.creatures = level['creatures'] 
+        
+        for creature, amount in self.creatures.items(): 
+            self.total_creatures += amount
+        
+        self.gatherables = level['gatherables'] 
+    
+    def __hash__(self): 
+        return hash(id(self)) 
+    
+    def __gt__(self, other): 
+        return self.value > other.value
+    
+    def __ge__(self, other): 
+        return self.value >= other.value
+    
+    def __lt__(self, other): 
+        return self.value < other.value
+    
+    def __le__(self, other): 
+        return self.value <= other.value
+    
+    def __eq__(self, other): 
+        return self.value == other.value
+    
+    def __add__(self, other): 
+        return self.__class__(self.value + other) 
+    
+    def __sub__(self, other): 
+        if type(other) is type(self): 
+            return abs(self.value - other.value) 
+        else: 
+            return self.__add__(-other) 
+    
+    def help_embed(self): 
+        embed = discord.Embed(title=self.name, type='rich') 
+
+        creatures_gen = ('{} x{}'.format(creature.name, amount) for creature, amount in self.creatures.items()) 
+        creatures_str = make_list(creatures_gen) 
+        surprise_attack_str = format_iterable(range(1, self.value)) 
+
+        embed.add_field(name='Creatures', value=creatures_str if len(creatures_str) > 0 else None, inline=False) 
+        embed.add_field(name='Surprise attack chance', value=surprise_attack_str if len(surprise_attack_str) > 0 else 'No surprise attack') 
+
+        gatherables_gen = ('{} - successful find yields {}'.format(item.name, amount) for item, amount in self.gatherables.items()) 
+        gatherables_str = make_list(gatherables_gen) 
+
+
+        embed.add_field(name='Gatherable items', value=gatherables_str if len(gatherables_str) > 0 else None, inline=False) 
+
+        return embed
+    
+    async def select_creature(self): 
+        index = random.randint(1, self.total_creatures) 
+
+        running_sum = 0
+
+        for creature, amount in self.creatures.items(): 
+            running_sum += amount
+
+            if running_sum >= index: 
+                print(creature) 
+
+                return creature
+    
+    Surface = enum.auto() 
+    Middle = enum.auto() 
+
+#this is to prevent errors from trying to view the incomplete Middle
+levels = list(Levels) 
+
+# noinspection PyMethodOverriding
+items = [] 
+
+class Item_Meta(ttd_tools.GO_Meta): 
+    append_to = items
+
+class Item(Events, metaclass=Item_Meta, append=False): 
+    name = ''
+    description = 'None' 
+    obtainments = () 
+    effects = () 
+    usages = () 
+    specials = () 
+    recipe = None
+    # can_stack is None if the item does not give bonuses anyways
+    can_stack = False
+    is_usable = False
+
+    def __init__(self, client, channel, owner):
+        self.owner = owner
+        self.usable = self.is_usable
+
+        Events.__init__(self, client, channel) 
+    
+    @staticmethod
+    def modify_deconstructed(deconstructed): 
+        del deconstructed['owner'] 
+
+        Events.modify_deconstructed(deconstructed) 
+
+    @classmethod
+    def has_in_recipe(cls, item_class):
+        if cls.recipe is not None:
+            recipe_items = tuple((item_class for item_class, amount in cls.recipe))
+
+            return item_class in recipe_items
+        else:
+            return False
+
+    @classmethod
+    def crafts(cls): 
+        return (item_class.name for item_class in items if item_class.has_in_recipe(cls)) 
+    
+    @classmethod
+    def gatherable_in(cls): 
+        return tuple((level.name for level in Levels if cls in level.gatherables)) 
+    
+    @classmethod
+    def gatherable(cls): 
+        return len(cls.gatherable_in()) > 0
+    
+    @classmethod
+    def dropped_by(cls): 
+        dropped_by_list = [] 
+
+        for creature in creatures: 
+            for item, amount in creature.starting_drops: 
+                if item is cls: 
+                    dropped_by_list.append(creature.name) 
+        
+        return tuple(dropped_by_list) 
+    
+    @classmethod
+    def droppable(cls): 
+        return len(cls.dropped_by()) > 0
+    
+    @classmethod
+    def craftable(cls): 
+        return cls.recipe is not None
+    
+    @classmethod
+    def get_obtainments(cls): 
+        obtainments = list(cls.obtainments) 
+
+        if cls.recipe is not None: 
+            obtainments.append('Craftable') 
+
+        if cls.gatherable(): 
+            levels_str = format_iterable(cls.gatherable_in()) 
+
+            obtainments.append('Can be gathered in {}'.format(levels_str)) 
+        
+        if cls.droppable(): 
+            creatures_str = format_iterable(cls.dropped_by()) 
+
+            obtainments.append('Dropped by {} upon death'.format(creatures_str)) 
+        
+        return obtainments
+    
+    async def auto_amount(self, report): 
+        return 1
+
+    async def on_shutdown(self, report, amount):
+        pass
+
+    async def on_turn_on(self, report, amount):
+        pass
+
+    @classmethod
+    def help_embed(cls):
+        embed = discord.Embed(title=cls.name, type='rich', description=cls.description) 
+
+        obtainments = cls.get_obtainments() 
+
+        obtainments_str = make_list(obtainments) 
+        effects_str = make_list(cls.effects) 
+        usages_str = make_list(cls.usages) 
+        crafts_str = make_list(cls.crafts()) 
+        specials_str = make_list(cls.specials) 
+
+        recipe_gen = ('{} x{}'.format(item.name, amount) for item, amount in (cls.recipe if cls.recipe is not None else ()))  
+        recipe_str = make_list(recipe_gen) 
+
+        embed.add_field(name='Ways to obtain', value=obtainments_str if len(obtainments_str) > 0 else 'Not obtainable', inline=False) 
+        embed.add_field(name='Effects when received', value=effects_str if len(effects_str) > 0 else 'No effects', inline=False) 
+        embed.add_field(name='Effects on use', value=usages_str if len(usages_str) > 0 else 'Not usable', inline=False) 
+        embed.add_field(name='Used to craft', value=crafts_str if len(crafts_str) > 0 else 'Nothing', inline=False) 
+        embed.add_field(name='Specials', value=specials_str if len(specials_str) > 0 else None, inline=False) 
+        embed.add_field(name='Recipe', value=recipe_str if len(recipe_str) > 0 else 'Not craftable', inline=False) 
+        embed.add_field(name='Stacks with itself', value=cls.can_stack) 
+
+        return embed
+
+    # noinspection PyTypeChecker
+    def stats_embed(self):
+        embed = self.help_embed()
+
+        embed.add_field(name='Owner', value=self.owner.name)
+        embed.add_field(name='Currently usable', value=self.usable)
+
+        return embed
+
+    async def on_game_turn_start(self, report, amount):
+        pass
+
+    async def on_game_turn_end(self, report, amount):
+        pass
+
+    async def on_battle_start(self, report, amount):
+        pass
+
+    async def on_battle_end(self, report, amount):
+        pass
+
+    async def on_battle_round_start(self, report, amount):
+        pass
+
+    async def on_battle_round_end(self, report, amount):
+        pass
+
+    async def on_first_hit(self, report, amount):
+        pass
+
+    async def on_win_coinflip(self, report, amount):
+        pass
+    
+    async def on_move_levels(self, report, amount, move_by): 
+        pass
+
+    async def apply_bonuses(self, report, amount):
+        pass
+
+    # this is like the inverse of apply_bonuses()
+    # returns whether the target died
+    async def remove_bonuses(self, report, amount): 
+        pass
+
+    '''
+    async def on_craft(self, target, amount): 
+      final_recipe = [[recipe_item, recipe_amount * amount] for recipe_item, recipe_amount in self.recipe] 
+  
+      lacking_items = target.lacks_items(final_recipe) 
+  
+      if len(lacking_items) > 0: 
+        for item, number in lacking_items: 
+          report.add('{} lacks {} {}(s) to craft {} {}(s) '.format(target.name, number, item.name, amount, self.name)) 
+      else: 
+        target.can_move = False
+  
+        await target.lose_items(final_recipe) 
+        await target.receive_items([self.__class__, amount]) 
+    ''' 
+
+    async def on_use(self, report, amount): 
+        pass
+    
+    async def can_use(self, report, amount): 
+        return True
+    
+    async def attempt_use(self, report, amount): 
+        if await self.can_use(report, amount): 
+            await self.on_use(report, amount) 
+
+class Meat(Item):
+    hp_regen = 10
+
+    name = 'Meat'
+    description = 'I seafood' 
+    obtainments = ('Attacks from Toxic Waste can be converted to Meat via the Bio-Wheel',) 
+    usages = ('Regens {} HP per piece to the player/pet it was used on'.format(hp_regen),
+              'Using it on a pet with full HP will instead regen its shield, for {} shield per piece'.format(hp_regen)) 
+    is_usable = True
+
+    async def auto_amount(self, report): 
+        if self.owner.current_hp < self.owner.max_hp: 
+            hp_deficit = self.owner.max_hp - self.owner.current_hp
+
+            return math.ceil(hp_deficit / self.hp_regen) 
+        else: 
+            report.add("{} can't auto-use {} right now because they're at full HP. ".format(self.owner.name, self.name)) 
+
+    async def on_use(self, report, amount): 
+        final_hp_regen = self.hp_regen * amount
+
+        self.owner.current_hp += final_hp_regen
+
+        report.add("{}'s current HP increased by {}! ".format(self.owner.name, final_hp_regen)) 
+
+        await self.owner.hp_changed(report) 
+
+        if self.owner.is_a(Player): 
+            await self.owner.lose_items(report, ((self, amount),)) 
+    
+    '''
+    async def can_use(self, report, amount): 
+        if self.owner.current_hp < self.owner.max_hp: 
+            return True
+        else: 
+            report.add('{} is already at full HP. '.format(self.owner.name)) 
+    ''' 
+
+
+class Suit(Item):
+    hp_bonus = 50
+    oxygen_bonus = 1
+    access_levels_bonus = [Levels.Middle] 
+
+    name = 'Suit'
+    description = 'Shell we try it on? ' 
+    effects = ('Protects the wearer from pressure damage in the Middle', "Increases the wearer's base, current, and max HP by {}".format(hp_bonus),
+                "Increases the wearer's current and max oxygen by {}".format(oxygen_bonus)) 
+
+    async def on_shutdown(self, report, amount): 
+        if amount > 0: 
+            hp_decrease = self.hp_bonus * self.owner.hp_multiplier
+
+            self.owner.base_hp -= hp_decrease
+            self.owner.current_hp -= hp_decrease
+            self.owner.max_hp -= hp_decrease
+            self.owner.current_oxygen -= self.oxygen_bonus
+            self.owner.max_oxygen -= self.oxygen_bonus
+            self.owner.access_levels = subtract_lists(self.owner.access_levels, self.access_levels_bonus) 
+
+    async def on_turn_on(self, report, amount): 
+        if amount > 0: 
+            hp_increase = self.hp_bonus * self.owner.hp_multiplier
+
+            self.owner.base_hp += hp_increase
+            self.owner.current_hp += hp_increase
+            self.owner.max_hp += hp_increase
+
+            self.owner.current_oxygen += self.oxygen_bonus
+            self.owner.max_oxygen += self.oxygen_bonus
+            self.owner.access_levels.extend(self.access_levels_bonus) 
+
+    async def apply_bonuses(self, report, amount):
+        self.owner.access_levels.extend(self.access_levels_bonus) 
+
+        hp_increase = self.hp_bonus * self.owner.hp_multiplier
+
+        self.owner.base_hp += hp_increase
+        self.owner.current_hp += hp_increase
+        self.owner.max_hp += hp_increase
+
+        report.add("{}'s base, current, and max HP increased by {}! ".format(self.owner.name, hp_increase)) 
+
+        await self.owner.hp_changed(report) 
+        # await self.owner.check_death()
+
+        self.owner.current_oxygen += self.oxygen_bonus
+        self.owner.max_oxygen += self.oxygen_bonus
+
+        report.add("{}'s current and max oxygen increased by {}! ".format(self.owner.name, self.oxygen_bonus)) 
+
+        await self.owner.oxygen_changed(report) 
+
+    async def remove_bonuses(self, report, amount):
+        self.owner.access_levels = subtract_lists(self.owner.access_levels, self.access_levels_bonus) 
+
+        hp_decrease = self.hp_bonus * self.owner.hp_multiplier
+
+        self.owner.base_hp -= hp_decrease
+        self.owner.current_hp -= hp_decrease
+        self.owner.max_hp -= hp_decrease
+
+        report.add("{}'s base, current, and max HP decreased by {}! ".format(self.owner.name, hp_decrease)) 
+
+        await self.owner.hp_changed(report) 
+        # owner_died = await self.owner.check_death()
+
+        self.owner.current_oxygen -= self.oxygen_bonus
+        self.owner.max_oxygen -= self.oxygen_bonus
+
+        report.add("{}'s current and max oxygen decreased by {}! ".format(self.owner.name, self.oxygen_bonus)) 
+
+        await self.owner.oxygen_changed(report) 
+
+class Coral(Item): 
+    name = 'Coral'
+    description = 'Great building material for some reason' 
+
+class Scale(Item):
+    name = 'Scale'
+    description = 'Extremely durable and hard to deform' 
+
+class Sky_Blade(Item):
+    name = 'Sky Blade'
+    description = "Really light but also quite sharp and durable" 
+
+class Hatchet_Fish_Corpse(Item):
+    name = 'Hatchet Fish Corpse'
+    description = 'Very hard skeleton' 
+
+
+class Fishing_Net(Item):
+    name = 'Fishing Net'
+    description = "Can catch basically anything if you're skilled enough"
+    obtainments = ('Fisherman starts out with one',) 
+    specials = ('Required to catch pets',) 
+
+class Wood(Item): 
+    name = 'Wood' 
+    description = "Why is this in the Middle? **Wood**n't it float to the Surface? " 
+
+class Blubber(Item): 
+    name = 'Blubber' 
+    description = 'Fat' 
+
+class Platinum_Elixir(Item): 
+    name = 'Platinum Elixir' 
+    description = 'Good source of platinum' 
+
+class Marlin_Sword(Item): 
+    attack_increase = 20
+
+    name = 'Marlin Sword' 
+    description = 'Poke' 
+    effects = ("Increases the player's attack damage by {}".format(attack_increase),) 
+
+    async def on_shutdown(self, report, amount): 
+        if amount > 0: 
+            self.owner.base_attack -= self.attack_increase
+            self.owner.current_attack -= self.attack_increase
+    
+    async def on_turn_on(self, report, amount): 
+        if amount > 0: 
+            self.owner.base_attack += self.attack_increase
+            self.owner.current_attack += self.attack_increase
+    
+    async def apply_bonuses(self, report, amount): 
+        self.owner.base_attack += self.attack_increase
+        self.owner.current_attack += self.attack_increase
+
+        report.add("{}'s base and current attack increased by {}! ".format(self.owner.name, self.attack_increase)) 
+
+        await self.owner.attack_changed(report) 
+    
+    async def remove_bonuses(self, report, amount): 
+        self.owner.base_attack -= self.attack_increase
+        self.owner.current_attack -= self.attack_increase
+
+        report.add("{}'s base and current attack decreased by {}! ".format(self.owner.name, self.attack_increase)) 
+
+        await self.owner.attack_changed(report) 
+
+class Shovelnose(Item): 
+    name = 'Shovelnose' 
+    description = 'Noses 4 shovels' 
+
+class Slime_Coat(Item): 
+    name = 'Slime Coat' 
+    description = 'Poison begone' 
+    effects = ('Protects the wearer from most forms of poison damage',) 
+
+class Watt(Item): 
+    name = 'Watt' 
+    description = '**Watt** is this for' 
+    specials = ('Used for regenerating shields',) 
+
+class Pufferfish_Corpse(Item): 
+    name = 'Pufferfish Corpse' 
+    description = 'Puffy' 
+
+class Lamp(Item): 
+    name = 'Lamp' 
+    description = 'Lights the way' 
+    effects = ("Decreases the player's surprise attack chance by 1 in all levels past the Middle",) 
+    recipe = (Watt, 20), (Wood, 3) 
+
+class Platinum_Juice(Item): 
+    per_round_regen = 40
+
+    name = 'Platinum Juice' 
+    description = 'Juicy' 
+    usages = ('Each one used heals the player by {} HP every battle round, for 1 battle'.format(per_round_regen),) 
+    recipe = (Platinum_Elixir, 1), (Meat, 4), (Coral, 10) 
+    is_usable = True
+
+    def __init__(self, client, channel, owner): 
+        self.used = 0
+
+        Item.__init__(self, client, channel, owner) 
+    
+    async def on_battle_round_start(self, report, amount): 
+        if self.used > 0: 
+            to_regen = self.per_round_regen * self.used
+
+            self.owner.current_hp += to_regen
+
+            report.add("{}'s current HP increased by {}! ".format(self.owner.name, to_regen)) 
+
+            await self.owner.hp_changed(report) 
+    
+    async def on_battle_end(self, report, amount): 
+        if self.used > 0: 
+            self.used = 0
+
+            report.add("{}'s {}(s) have now worn off. ".format(self.owner.name, self.name)) 
+    
+    async def on_use(self, report, amount): 
+        self.used += amount
+
+        report.add('{} now has {} {}(s) active. '.format(self.owner.name, self.used, self.name)) 
+
+        if self.owner.is_a(Player): 
+            await self.owner.lose_items(report, ((self, amount),)) 
+
+# noinspection PyTypeChecker
+class Entity(Events):
+    name = ''
+    description = '' 
+    specials = ('None',) 
+    starting_hp_multiplier = 1
+    starting_hp = 0
+    starting_shield = 0
+    starting_attack = 0
+    starting_enemy_attack_multiplier = 1
+    starting_miss = 1
+    starting_crit = 6
+    starting_enemy_miss_bonus = 0
+    starting_enemy_crit_bonus = 0
+    starting_access_levels = ()
+    starting_penetrates = ()
+    starting_bleeds = () 
+
+    def __init__(self, client, channel, current_level=None): 
+        self.hp_multiplier = self.starting_hp_multiplier
+        self.base_hp = self.current_hp = self.max_hp = self.starting_hp * self.hp_multiplier
+        '''
+        self.current_hp = base_hp
+        self.max_hp = base_hp
+        '''
+        self.base_shield = self.current_shield = self.max_shield = self.starting_shield
+        '''
+        self.current_shield = base_shield
+        self.max_shield = base_shield
+        '''
+        self.base_attack = self.current_attack = self.starting_attack
+        # self.current_attack = base_attack
+        self.enemy_attack_multiplier = self.starting_enemy_attack_multiplier
+        self.miss = self.starting_miss
+        self.crit = self.starting_crit
+        self.enemy_miss_bonus = self.starting_enemy_miss_bonus
+        self.enemy_crit_bonus = self.starting_enemy_crit_bonus
+        # if your level is not in this, you can still go there, but you will take pressure damage.
+        self.access_levels = list(self.starting_access_levels)
+        # your attack bypasses these
+        self.penetrates = list(self.starting_penetrates)
+        # your attack "bleeds" these (overkill is not wasted but rather is dealt to another entity)
+        self.bleeds = list(self.starting_bleeds)
+        # self.death_restore = copy.deepcopy(self)
+        self.current_level = current_level
+
+        self.current_actions = 0
+        self.needs_death_checking = False
+
+        Events.__init__(self, client, channel) 
+    
+    @staticmethod
+    def modify_deconstructed(deconstructed): 
+        deconstructed['access_levels'] = [level.value for level in deconstructed['access_levels']] 
+        deconstructed['current_level'] = deconstructed['current_level'].value
+        
+        Events.modify_deconstructed(deconstructed) 
+    
+    def reconstruct_next(self): 
+        self.access_levels = [Levels(value) for value in self.access_levels] 
+        self.current_level = Levels(self.current_level) 
+
+        Events.reconstruct_next(self) 
+    
+    def acting(self, report): 
+        _report = report
+
+        class Acting: 
+            entity = self
+            report = _report
+
+            async def __aenter__(self): 
+                self.entity.current_actions += 1
+
+                print('{} is now running {} actions'.format(self.entity.name, self.entity.current_actions)) 
+            
+            async def __aexit__(self, typ, value, traceback): 
+                self.entity.current_actions -= 1
+
+                print('{} is now running {} actions'.format(self.entity.name, self.entity.current_actions)) 
+
+                if self.entity.current_actions == 0: 
+                    if self.entity.needs_death_checking: 
+                        print('now checking if {} dies'.format(self.entity.name)) 
+
+                        await self.entity.check_death(self.report) 
+        
+        return Acting() 
+
+    # noinspection PyUnreachableCode
+    def final_miss(self, enemy):
+        return self.miss + enemy.enemy_miss_bonus
+
+        '''
+        total_miss = tuple(self.miss) + tuple(enemy.enemy_miss_bonus)
+        final_miss = tuple(chance for chance in range(1, 7) if chance in total_miss and -chance not in total_miss)
+  
+        return final_miss
+        '''
+
+    # noinspection PyUnreachableCode
+    def final_crit(self, enemy):
+        return self.crit - enemy.enemy_crit_bonus
+
+        '''
+        total_crit = tuple(self.crit) + tuple(enemy.enemy_crit_bonus)
+        final_crit = tuple(chance for chance in range(1, 7) if chance in total_crit and -chance not in total_crit)
+  
+        return final_crit
+        ''' 
+    
+    @action
+    async def on_shutdown(self, report): 
+        await self.change_hp_multiplier(None, 1 / self.starting_hp_multiplier, updating=True) 
+
+        hp_decrease = self.starting_hp * self.hp_multiplier
+
+        self.base_hp -= hp_decrease
+        self.current_hp -= hp_decrease
+        self.max_hp -= hp_decrease
+        self.base_shield -= self.starting_shield
+        self.current_shield -= self.starting_shield
+        self.max_shield -= self.starting_shield
+        self.base_attack -= self.starting_attack
+        self.current_attack -= self.starting_attack
+        self.enemy_attack_multiplier /= self.starting_enemy_attack_multiplier
+        self.miss -= self.starting_miss
+        self.crit -= self.starting_crit
+        self.enemy_miss_bonus -= self.starting_enemy_miss_bonus
+        self.enemy_crit_bonus -= self.starting_enemy_crit_bonus
+        self.access_levels = subtract_lists(self.access_levels, self.starting_access_levels)
+        self.penetrates = subtract_lists(self.penetrates, self.starting_penetrates)
+        self.bleeds = subtract_lists(self.bleeds, self.starting_bleeds) 
+    
+    @action
+    async def on_turn_on(self, report): 
+        await self.change_hp_multiplier(None, self.starting_hp_multiplier, updating=True) 
+
+        hp_increase = self.starting_hp * self.hp_multiplier
+
+        self.base_hp += hp_increase
+        self.current_hp += hp_increase
+        self.max_hp += hp_increase
+
+        await self.hp_changed(None) 
+
+        self.base_shield += self.starting_shield
+        self.current_shield += self.starting_shield
+        self.max_shield += self.starting_shield
+
+        await self.shield_changed(None) 
+
+        self.base_attack += self.starting_attack
+        self.current_attack += self.starting_attack
+        self.enemy_attack_multiplier *= self.starting_enemy_attack_multiplier
+        self.miss += self.starting_miss
+        self.crit += self.starting_crit
+        self.enemy_miss_bonus += self.starting_enemy_miss_bonus
+        self.enemy_crit_bonus += self.starting_enemy_crit_bonus
+        self.access_levels.extend(self.starting_access_levels)
+        self.penetrates.extend(self.starting_penetrates)
+        self.bleeds.extend(self.starting_bleeds) 
+
+        # noinspection PyTypeChecker
+    
+    # noinspection PyTypeChecker
+    @classmethod
+    def help_embed(cls): 
+        embed = discord.Embed(title=cls.name, type='rich', description=cls.description) 
+
+        embed.add_field(name='Specials', value=make_list(cls.specials), inline=False) 
+
+        embed.add_field(name='HP', value=cls.starting_hp) 
+        embed.add_field(name='HP Multiplier', value=cls.starting_hp_multiplier) 
+        embed.add_field(name='Shield', value=cls.starting_shield)
+        embed.add_field(name='Attack Damage', value=cls.starting_attack)
+
+        embed.add_field(name='Enemy Attack Multiplier', value=cls.starting_enemy_attack_multiplier)
+
+        miss_string = format_iterable(range(1, min(cls.starting_miss, 6) + 1))
+        crit_string = format_iterable(range(max(cls.starting_crit, 1), 7))
+
+        embed.add_field(name='Misses on', value=miss_string if len(miss_string) > 0 else 'Cannot miss')
+        embed.add_field(name='Crits on', value=crit_string if len(crit_string) > 0 else 'Cannot crit')
+        embed.add_field(name='Enemy Miss Bonus', value='{:+}'.format(cls.starting_enemy_miss_bonus))
+        embed.add_field(name='Enemy Crit Bonus', value='{:+}'.format(cls.starting_enemy_crit_bonus)) 
+
+        access_levels_string = format_iterable((level.name for level in cls.starting_access_levels)) 
+
+        embed.add_field(name='Can safely access', value=access_levels_string if len(access_levels_string) > 0 else 'nowhere')
+
+        penetrates_string = format_iterable(cls.starting_penetrates)
+        bleeds_string = format_iterable(cls.starting_bleeds)
+
+        embed.add_field(name='Penetrates', value=penetrates_string if len(penetrates_string) > 0 else 'nothing')
+        embed.add_field(name='Bleeds', value=bleeds_string if len(bleeds_string) > 0 else 'nothing') 
+
+        return embed
+
+    def stats_embed(self): 
+        embed = discord.Embed(title=self.name, type='rich', description=self.description) 
+
+        embed.add_field(name='Type', value=self.__class__.name) 
+
+        embed.add_field(name='Specials', value=make_list(self.specials), inline=False) 
+
+        embed.add_field(name='HP', value='{} / {}'.format(self.current_hp, self.max_hp)) 
+        embed.add_field(name='HP Multiplier', value=self.hp_multiplier) 
+        embed.add_field(name='Shield', value='{} / {}'.format(self.current_shield, self.max_shield))
+        embed.add_field(name='Attack Damage', value=self.current_attack)
+
+        embed.add_field(name='Enemy Attack Multiplier', value=self.enemy_attack_multiplier)
+
+        miss_string = format_iterable(range(1, min(self.miss, 6) + 1))
+        crit_string = format_iterable(range(max(self.crit, 1), 7))
+
+        embed.add_field(name='Misses on', value=miss_string if len(miss_string) > 0 else 'Cannot miss')
+        embed.add_field(name='Crits on', value=crit_string if len(crit_string) > 0 else 'Cannot crit')
+        embed.add_field(name='Enemy Miss Bonus', value=self.enemy_miss_bonus)
+        embed.add_field(name='Enemy Crit Bonus', value=self.enemy_crit_bonus)
+
+        access_levels_string = format_iterable((level.name for level in self.access_levels))
+
+        embed.add_field(name='Current Location', value=self.current_level.name)
+        embed.add_field(name='Can safely access', value=access_levels_string if len(access_levels_string) > 0 else 'No levels')
+
+        penetrates_string = format_iterable(self.penetrates)
+        bleeds_string = format_iterable(self.bleeds) 
+
+        embed.add_field(name='Penetrates', value=penetrates_string if len(penetrates_string) > 0 else 'nothing')
+        embed.add_field(name='Bleeds', value=bleeds_string if len(bleeds_string) > 0 else 'nothing') 
+
+        return embed
+    
+    def should_die(self): 
+        return self.current_hp == 0
+    
+    @action
+    async def hp_changed(self, report): 
+        self.needs_death_checking = True
+
+        self.current_hp = min(self.current_hp, self.max_hp) 
+        self.current_hp = max(self.current_hp, 0) 
+
+        if report is not None: 
+            report.add('{} has {}/{} HP now! '.format(self.name, self.current_hp, self.max_hp)) 
+    
+    @action
+    async def change_hp_multiplier(self, report, change_factor, updating=False): 
+        self.hp_multiplier *= change_factor
+
+        if report is not None: 
+            report.add("{}'s HP multiplier was changed by a factor of {}! ".format(self.name, change_factor)) 
+        
+        self.base_hp *= change_factor
+        self.current_hp *= change_factor
+        self.max_hp *= change_factor
+
+        if report is not None: 
+            report.add("{}'s HP multiplier is now x{}! ".format(self.name, self.hp_multiplier)) 
+        
+        if not updating: 
+            await self.hp_changed(report) 
+    
+    @action
+    async def shield_changed(self, report): 
+        self.current_shield = min(self.current_shield, self.max_shield)
+        self.current_shield = max(self.current_shield, 0) 
+
+        if report is not None: 
+            report.add('{} has {}/{} shield now! '.format(self.name, self.current_shield, self.max_shield)) 
+    
+    @action
+    async def attack_changed(self, report): 
+        report.add('{} has {} attack now! '.format(self.name, self.current_attack)) 
+    
+    @action
+    async def check_death(self, report): 
+        # current hp exceeds max hp
+        # self died
+        # there is actually a reason this is not elif, just in case somehow your max_hp is 0
+        try: 
+            if self.should_die(): 
+                # implement on_death() soon
+                await self.on_death(report) 
+
+                print(12) 
+        finally: 
+            print(13) 
+            
+            self.needs_death_checking = False
+
+            print('no longer needs death checking') 
+
+    # the following two are just for being able to output a message in addition to changing HP.
+    # commented out for the moment while i think about how to do hp changes
+    ''' 
+    async def current_hp_decrease(self, decrease_by, inflicter=None): 
+      report.add('{} lost {} HP! '.format(self.name, decrease_by)) 
+      await self.check_death(-decrease_by, inflicter=inflicter) 
+    
+    async def current_hp_increase(self, increase_by): 
+      report.add('{} gained {} HP! '.format(self.name, increase_by)) 
+      await self.check_death(increase_by) 
+    ''' 
+    
+    @action
+    async def calculate_shield_bleed(self, report, inflicter, penetrates, bleeds):
+        bleed_damage = -self.current_shield
+
+        report.add("{}'s shield bleeds onto HP! ".format(self.name))
+        await self.take_damage(report, bleed_damage, inflicter=inflicter, penetrates=penetrates, bleeds=bleeds)
+
+        # intended to be overriden in each of the child classes Player, Pet, and Sub (Creature and Blubber_Base do not bleed and therefore will not override this method) 
+    
+    @action
+    async def calculate_hp_bleed(self, report, inflicter, penetrates, bleeds):
+        pass
+    
+    @action
+    async def take_damage(self, report, damage, inflicter=None, penetrates=(), bleeds=(), crit=False): 
+        # no point doing any of this if damage is 0
+        if damage != 0:
+            # if self still has shield, and the attack type does not penetrate shield, the attack strikes their shield
+            if self.current_shield > 0 and 'shield' not in penetrates:
+                self.current_shield -= damage
+
+                report.add("{}'s shield absorbed {} damage! ".format(self.name, damage)) 
+
+                # calculate shield bleed here
+                if self.current_shield < 0 and 'shield' in bleeds:
+                    await self.calculate_shield_bleed(report, inflicter, penetrates, bleeds) 
+                
+                await self.shield_changed(report) 
+                # otherwise, they lose hp instead
+            else:
+                # Pet and Sub classes are not yet defined, define them
+                self.current_hp -= damage
+
+                report.add('{} took {} damage! '.format(self.name, damage)) 
+
+                # calculate bleed damage here. This is not finished yet
+                if self.current_hp < 0: 
+                    await self.calculate_hp_bleed(report, inflicter, penetrates, bleeds) 
+                
+                await self.hp_changed(report) 
+
+                '''
+                if self.current_hp < self.min_hp: 
+                  bleed_damage = self.min_hp - self.current_hp
+                  if self.is_a(Pet) and 'pet' in bleeds: 
+                    if self.owner.sub is not None and self.owner.sub.hp > 0: 
+                      self.owner.sub.take_damage(bleed_damage, inflicter=inflicter, penetrates=penetrates, bleeds=bleeds) 
+                    else: 
+                      self.owner.take_damage(bleed_damage, inflicter=inflicter, penetrates=penetrates, bleeds=bleeds) 
+                  elif self.is_a(Sub) and 'sub' in bleeds: 
+                    self.owner.take_damage(bleed_damage, inflicter=inflicter, penetrates=penetrates, bleeds=bleeds) 
+                ''' 
+    
+    @action
+    async def check_pressure_damage(self, report): 
+        smallest_distance = self.current_level.value
+
+        for level in self.access_levels: 
+            distance = self.current_level - level
+
+            smallest_distance = min(smallest_distance, distance)
+
+        if smallest_distance > 0:
+            damage = smallest_distance * 20
+
+            report.add('{} takes pressure damage! '.format(self.name)) 
+            
+            await self.take_damage(report, damage, penetrates=['shield']) 
+    
+    @action
+    async def check_pressure(self, report): 
+        if self.current_level not in self.access_levels:
+            await self.check_pressure_damage(report) 
+    
+    @action
+    async def deal_damage(self, report, target, damage, crit, penetrates, bleeds): 
+        actual_damage = damage * target.enemy_attack_multiplier
+
+        return await target.take_damage(report, actual_damage, inflicter=self, penetrates=penetrates, bleeds=bleeds, crit=crit) 
+    
+    @action
+    async def on_miss(self, report, target):
+        if target.is_a(Player) and 'blubber base' not in self.penetrates and target.blubber_base is not None and target.blubber_base.hp > 0: 
+            report.add("{} missed and hit {}'s Blubber Base instead! ".format(self.name, target.name)) 
+            await self.deal_damage(report, target.blubber_base, self.current_attack, False, self.penetrates, self.bleeds) 
+        else:
+            report.add('{} missed! '.format(self.name)) 
+    
+    @action
+    async def on_regular_hit(self, report, target): 
+        report.add('{} got a regular hit! '.format(self.name)) 
+        await self.deal_damage(report, target, self.current_attack, False, self.penetrates, self.bleeds) 
+    
+    @action
+    async def on_crit(self, report, target): 
+        damage = self.current_attack * 2
+
+        report.add('{} got a critical hit! '.format(self.name)) 
+        await self.deal_damage(report, target, damage, True, self.penetrates, self.bleeds) 
+    
+    @action
+    async def switch_hit(self, report, target): 
+        async with target.acting(report): 
+            miss = self.final_miss(target)
+            crit = self.final_crit(target)
+            # here is the attack roll (representing a die roll)
+            attack_roll = Die.roll_die()
+
+            report.add('{} rolled a {}! '.format(self.name, attack_roll))
+
+            if attack_roll <= miss:
+                await self.on_miss(report, target)
+            elif attack_roll >= crit: 
+                await self.on_crit(report, target) 
+            else: 
+                await self.on_regular_hit(report, target) 
+
+    # receiver is an object representing the receiver of the items, items is a dict of items to donate, with key-value pairs of item (an Item object): amount
+    # i am yet to find out whether custom objects can be dict keys. If there is a bug with items i should look HERE first!
+    # REWORK THIS!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!! 
+
+    @action
+    async def attack(self, report, defender): 
+        async with defender.acting(report): 
+            if defender.is_a(Player):
+                # if defender is a Player, has a living pet, and the entity does not ignore the pet
+                if 'pet' not in self.penetrates and defender.pet is not None and defender.pet.hp > 0:
+                    # reaction_member = self.channel.guild.get_member(defender.member_id)
+                    report.add('{0}, will your pet take the hit? React with {1} for yes and {1} for no. This defaults to {2} if you do not respond after 20 seconds. '.format(defender.name, thumbs_up_emoji, thumbs_down_emoji))
+
+                    reaction_emoji = await self.client.prompt_for_reaction(report, defender.member_id, emojis=(thumbs_up_emoji, thumbs_down_emoji), timeout=20, default_emoji=thumbs_down_emoji)
+
+                    '''
+                    target_prompt.add_reaction(thumbs_up_emoji) 
+                    target_prompt.add_reaction(thumbs_down_emoji) 
+            
+                    def check(reaction, member): 
+                        return reaction.message is target_prompt and reaction.emoji in (thumbs_up_emoji, thumbs_down_emoji) and member is reaction_member
+                    
+                    try: 
+                        reaction, member = await self.client.wait_for('reaction_add', check=check, timeout=20) 
+                        reaction_emoji = reaction.emoji
+                    except asyncio.TimeoutError: 
+                        reaction_emoji = thumbs_down_emoji
+                    '''
+
+                    # if for some reason the pet still exists and is alive after this prompt
+                    if reaction_emoji == thumbs_up_emoji and defender.pet is not None and defender.pet.hp > 0:
+                        target = defender.pet
+                    elif 'sub' not in self.penetrates and defender.sub is not None and defender.sub.current_hp > 0 and defender.sub.active:
+                        target = defender.sub
+                    else:
+                        target = defender
+
+                # if the player is still the target but they have a living sub and self does not ignore subs
+                elif 'sub' not in self.penetrates and defender.sub is not None and defender.sub.current_hp > 0 and defender.sub.active:
+                    target = defender.sub
+                else:
+                    target = defender
+            else:
+                target = defender
+
+            await self.switch_hit(report, target) 
+    
+    @action
+    async def on_death(self, report):
+        report.add('{} died! '.format(self.name))
+
+        ''' 
+        self.base_hp = self.death_restore.base_hp
+        self.current_hp = self.death_restore.current_hp
+        self.max_hp = self.death_restore.max_hp
+        self.base_shield = self.death_restore.base_shield
+        self.current_shield = self.death_restore.current_shield
+        self.max_shield = self.death_restore.max_shield
+        self.base_attack = self.death_restore.base_attack
+        self.current_attack = self.death_restore.current_attack
+        self.miss = copy.deepcopy(self.death_restore.miss) 
+        self.crit = copy.deepcopy(self.death_restore.miss) 
+        self.enemy_miss_bonus = copy.deepcopy(self.death_restore.enemy_miss_bonus) 
+        self.enemy_crit_bonus = copy.deepcopy(self.death_restore.enemy_crit_bonus) 
+        self.scaling_factor = self.death_restore.scaling_factor
+        self.access_levels = copy.deepcopy(self.death_restore.access_levels) 
+        self.penetrates = copy.deepcopy(self.death_restore.penetrates) 
+        self.bleeds = copy.deepcopy(self.death_restore.bleeds) 
+        ''' 
+    
+    @action
+    async def on_battle_round_start(self, report): 
+        await self.check_pressure(report) 
+    
+    @action
+    async def on_move_levels(self, report, move_by): 
+        self.current_level += move_by
+
+        report.add('{} is now in the {}! '.format(self.name, self.current_level.name)) 
+
+    ''' async def give_items(self, receiver, items_to_give): 
+      total_to_give = {} 
+      
+      for item, amount in items_to_give.items(): 
+        to_receive = amount
+        if All in receiver.multipliers: 
+            to_receive *= receiver.multipliers[All] 
+        elif item in receiver.multipliers: 
+            to_receive *= receiver.multipliers[item] 
+        total_to_give.update({item: to_receive}) 
+      
+      receiver.receive_items(total_to_give) '''
+
+    # def on_death(self, killer):
+
+
+# might not be needing this anymore, gonna save for if i do later
+'''class Multipliers: 
+    def __init__(self, all_multiplier, food_multiplier, wood_multiplier, iron_multiplier, steel_multiplier, titanium_multiplier, feather_multiplier, cloud_multipler): 
+        self.all_multiplier = all_multiplier
+        self.food_multiplier = food_multiplier
+        self.wood_multiplier = wood_multiplier
+        self.iron_multiplier = iron_multiplier
+        self.steel_multiplier = steel_multipler
+        self.titanium_multiplier = titanium_multiplier
+        self.feather_multiplier = feather_multiplier
+        self.cloud_multiplier = cloud_multiplier ''' 
+
+class Commander(Entity): 
+    starting_priority = 0
+
+    def __init__(self, client, channel, enemy=None, current_level=None): 
+        self.priority = self.starting_priority
+        self.enemy = enemy
+        self.battle_turn = False
+
+        Entity.__init__(self, client, channel, current_level=current_level) 
+    
+    @action
+    async def on_shutdown(self, report): 
+        await Entity.on_shutdown(self, report) 
+
+        self.priority -= self.starting_priority
+    
+    @action
+    async def on_turn_on(self, report): 
+        await Entity.on_turn_on(self, report) 
+
+        self.priority += self.starting_priority
+    
+    @classmethod
+    def help_embed(cls): 
+        embed = super(Commander, cls).help_embed() 
+
+        embed.add_field(name='Priority', value=cls.starting_priority) 
+
+        return embed
+    
+    def stats_embed(self): 
+        embed = Entity.stats_embed(self) 
+        
+        embed.add_field(name='Currently fighting against', value=self.enemy.name if self.enemy is not None else None) 
+        embed.add_field(name='Battle Turn', value=self.battle_turn)
+        embed.add_field(name='Priority', value=self.priority) 
+
+        return embed
+    
+    @action
+    async def start_battle_turn(self, report): 
+        self.battle_turn = True
+
+        report.add("It's now {}'s battle turn! ".format(self.name)) 
+    
+    @action
+    async def end_battle_turn(self, report): 
+        self.battle_turn = False
+
+        report.add("It's no longer {}'s battle turn. ".format(self.name)) 
+        
+        await self.on_global_event(report, 'battle_round_end') 
+        await self.enemy.on_global_event(report, 'battle_round_end') 
+    
+    @action
+    async def leave_battle(self, report): 
+        async with self.enemy.acting(report): 
+            opponent = self.enemy
+            self.enemy = None
+            opponent.enemy = None
+
+            await self.on_global_event(report, 'battle_end') 
+            await opponent.on_global_event(report, 'battle_end') 
+
+            report.add('{} and {} are no longer fighting each other. '.format(self.name, opponent.name)) 
+    
+    @action
+    async def on_global_event(self, report, event_name, *args, **kwargs): 
+        pass
+
+classes = [] 
+
+class Player_Meta(ttd_tools.GO_Meta): 
+    append_to = classes
+
+# noinspection PyTypeChecker
+class Player(Commander, metaclass=Player_Meta, append=False): 
+    name_limit = 50
+    banned_chars = ('@', '\n') 
+    
+    def banned_repr_gen(chars): 
+        for char in chars: 
+            repr_str = repr(char) 
+            
+            to_yield = repr_str[1:len(repr_str) - 1] 
+            
+            yield to_yield
+    
+    banned_str = format_iterable(banned_repr_gen(banned_chars), formatter='`{}`') 
+    
+    regen_bonus = 20
+    failed_flee_punishment = 2
+
+    '''
+    name = ''
+    description = 'None'
+    specials = ('None',) 
+    starting_shield = 0
+    starting_enemy_attack_multiplier = 1
+    starting_miss = 1
+    starting_crit = 6
+    starting_enemy_miss_bonus = 0
+    starting_enemy_crit_bonus = 0
+    starting_penetrates = []
+    starting_bleeds = []
+    '''
+
+    starting_hp = 100
+    starting_attack = 20
+    starting_access_levels = (Levels.Surface,) 
+    starting_oxygen = 5
+    starting_items = ()
+    starting_multipliers = {}
+    starting_priority = 0
+
+    def __init__(self, client, channel, game, member_id=None): 
+        self.game = game
+        self.member_id = member_id
+        self.mention = '<@{}>'.format(self.member_id) 
+        self.current_oxygen = self.starting_oxygen
+        self.max_oxygen = self.starting_oxygen
+        self.items = [] 
+        self.saved_items = [] 
+        self.multipliers = copy.deepcopy(self.starting_multipliers) 
+        self.sub = None
+        self.pet = None
+        self.blubber_base = None
+        self.o_game_turn = False
+        self.uo_game_turn = False
+        self.can_move = False
+
+        self.suiciding = False
+        # players cannot do anything at all when dead
+
+        Commander.__init__(self, client, channel, current_level=Levels.Surface) 
+    
+    @staticmethod
+    def modify_deconstructed(deconstructed): 
+        del deconstructed['game']
+
+        items_copy = [inv_entry.copy() for inv_entry in deconstructed['items']]
+
+        for inv_entry in items_copy:
+            inv_entry[0] = inv_entry[0].deconstruct()
+
+        deconstructed['items'] = items_copy
+
+        if deconstructed['pet'] is not None:
+            deconstructed['pet'] = deconstructed['pet'].deconstruct()
+        if deconstructed['sub'] is not None:
+            deconstructed['sub'] = deconstructed['sub'].deconstruct()
+        if deconstructed['blubber_base'] is not None:
+            deconstructed['blubber_base'] = deconstructed['blubber_base'].deconstruct()
+
+        enemy = deconstructed['enemy']
+
+        if enemy is not None:
+            if not (enemy.is_a(Player)):
+                deconstructed['enemy'] = enemy.deconstruct()
+            else:
+                deconstructed['enemy'] = enemy.member_id
+        
+        Commander.modify_deconstructed(deconstructed) 
+
+    def reconstruct_next(self):
+        for inv_entry in self.items:
+            inv_entry[0] = self.reconstruct(inv_entry[0], self.client, self.channel, self)
+
+        if self.sub is not None:
+            self.sub = self.reconstruct(self.sub, self.client, self.channel, self)
+        if self.pet is not None:
+            self.pet = self.reconstruct(self.sub, self.client, self.channel, self)
+        if self.blubber_base is not None:
+            self.blubber_base = self.reconstruct(self.blubber_base, self.client, self.channel, self) 
+        
+        if type(self.enemy) is dict:
+            self.enemy = self.reconstruct(self.enemy, self.client, self.channel, self) 
+
+        Commander.reconstruct_next(self) 
+    
+    def should_die(self): 
+        return Commander.should_die(self) or self.suiciding
+    
+    @action
+    async def on_shutdown(self, report): 
+        await Commander.on_shutdown(self, report) 
+
+        self.current_oxygen -= self.starting_oxygen
+        self.max_oxygen -= self.starting_oxygen
+
+        for item_class, bonus in self.starting_multipliers.items(): 
+            self.multipliers[item_class] /= bonus
+        
+        if self.enemy is not None: 
+            await self.enemy.on_global_event(report, 'shutdown') 
+    
+    @action
+    async def on_turn_on(self, report): 
+        await Commander.on_turn_on(self, report) 
+
+        self.current_oxygen += self.starting_oxygen
+        self.max_oxygen += self.starting_oxygen
+
+        await self.oxygen_changed(None) 
+
+        for item_class, bonus in self.starting_multipliers.items(): 
+            if item_class in self.multipliers:
+                self.multipliers[item_class] *= bonus
+            else:
+                self.multipliers[item_class] = bonus
+        
+        if self.enemy is not None: 
+            await self.enemy.on_global_event(report, 'turn_on') 
+        
+        '''
+        #corresponding member is no longer in the server
+        if self.channel.guild.get_member(self.member_id) is None: 
+            self.suiciding = True
+
+            report.add('{} is no longer in this server, so they will now suicide. '.format(self.name)) 
+        ''' 
+
+    def get_inv_entry(self, item_class):
+        for inv_entry in self.items:
+            if inv_entry[0].__class__ is item_class:
+                return inv_entry
+
+        return None, 0
+    
+    def has_item(self, item): 
+        inv_entry, inv_amount = self.get_inv_entry(item) 
+
+        return inv_amount > 0
+
+    def lacks_items(self, required_items):
+        missing_items = []
+
+        for required_item, required_amount in required_items:
+            if type(required_item) is type(Item):
+                required_item_class = required_item
+            else:
+                required_item_class = required_item.__class__
+
+            own_item, own_item_amount = self.get_inv_entry(required_item_class)
+
+            if own_item_amount < required_amount:
+                deficit = required_amount - own_item_amount
+
+                missing_items.append((required_item_class, deficit))
+
+        return missing_items
+
+    # noinspection PyTypeChecker
+    @classmethod
+    def help_embed(cls): 
+        embed = super(Player, cls).help_embed() 
+
+        embed.add_field(name='Oxygen', value=cls.starting_oxygen) 
+
+        multipliers_gen = ('{} x{}'.format(item.name, multiplier) for item, multiplier in cls.starting_multipliers.items())
+        multipliers_string = make_list(multipliers_gen) 
+
+        embed.add_field(name='Item Multipliers', value=multipliers_string if len(multipliers_string) > 0 else None, inline=False) 
+
+        items_gen = ('{} x{}'.format(item.name, amount) for item, amount in cls.starting_items) 
+        items_str = make_list(items_gen) 
+
+        embed.add_field(name='Starts with', value=items_str if len(items_str) > 0 else 'Nothing', inline=False) 
+
+        return embed
+
+    def stats_embed(self):
+        embed = Commander.stats_embed(self)
+
+        embed.add_field(name='Oxygen', value='{} / {}'.format(self.current_oxygen, self.max_oxygen)) 
+
+        multipliers_gen = ('{} x{}'.format(item.name, multiplier) for item, multiplier in self.multipliers.items())
+        multipliers_string = make_list(multipliers_gen) 
+
+        embed.add_field(name='Item Multipliers', value=multipliers_string if len(multipliers_string) > 0 else None, inline=False) 
+
+        embed.add_field(name='Game Turn', value=self.uo_game_turn)
+        embed.add_field(name='Can move', value=self.can_move) 
+
+        embed.add_field(name='User', value=self.mention, inline=False) 
+
+        return embed
+    
+    @classmethod
+    def name_custom_check(cls, content): 
+        banned_gen = ((char in content) for char in cls.banned_chars) 
+
+        return len(content) <= cls.name_limit and not any(banned_gen) 
+    
+    '''
+    @acms.asynccontextmanager
+    async def acting(self): 
+        self.currently_acting = True
+
+        yield
+
+        self.currently_acting = False
+    ''' 
+
+    '''
+    def acting(self): 
+        class Acting: 
+            entity = self
+
+            async def __aenter__(self): 
+                self.entity.current_actions += 1
+
+                print('{} is now running {} actions'.format(self.entity.name, self.entity.current_actions)) 
+            
+            async def __aexit__(self, typ, value, traceback): 
+                self.entity.current_actions -= 1
+
+                print('{} is now running {} actions'.format(self.entity.name, self.entity.current_actions)) 
+        
+        return Acting() 
+    ''' 
+
+    @classmethod
+    async def setname_args_check(cls, client, report, author, name=None): 
+        if name is not None and not cls.name_custom_check(name): 
+            report.add('{}, argument `name` must not exceed {} characters or contain the following symbols: {}. '.format(author.mention, cls.name_limit, cls.banned_str)) 
+        else: 
+            return True
+
+    @action
+    async def use_move(self, report): 
+        self.can_move = False
+
+        report.add("{}'s move is now used up. ".format(self.name)) 
+    
+    @action
+    async def call_and_flip(self, report): 
+        report.add('Call the side! ') 
+
+        called_side = await self.client.prompt_for_message(report, self.member_id, choices=('heads', 'tails'), timeout=10, default_choice='heads') 
+
+        actual_side = Die.flip_coin() 
+
+        report.add('{} calls {}! '.format(self.name, called_side)) 
+        report.add("It's {}! ".format(actual_side)) 
+
+        return called_side.lower() == actual_side
+    
+    async def display_items(self, report): 
+        def generator(inv): 
+            if len(inv) > 0: 
+                for item, amount in inv: 
+                    yield '{} x {}'.format(item.name, amount) 
+            else: 
+                yield 'Nothing' 
+        
+        report.add("{}'s current items: ```{}```".format(self.name, make_list(generator(self.items)))) 
+        report.add('Items that will be received after death: ```{}```'.format(make_list(generator(self.saved_items)))) 
+    
+    @action
+    async def take_oxygen_damage(self, report):
+        report.add('{} takes oxygen damage! '.format(self.name)) 
+
+        await self.take_damage(report, 100, penetrates=('shield',)) 
+    
+    @action
+    async def check_current_oxygen(self, report): 
+        if self.current_oxygen <= 0: 
+            await self.take_oxygen_damage(report) 
+    
+    @action
+    async def oxygen_changed(self, report): 
+        self.current_oxygen = max(self.current_oxygen, 0) 
+
+        if report is not None: 
+            report.add('{} now has {}/{} oxygen! '.format(self.name, self.current_oxygen, self.max_oxygen)) 
+    
+    @action
+    async def handle_move_method(self, report, method): 
+        if method == 'regular': 
+            await self.use_move(report) 
+    
+    @action
+    async def move_levels(self, report, direction, method): 
+        movement = None
+
+        if direction.lower() == 'down': 
+            if self.current_level < Levels.Middle: 
+                movement = 1
+            else: 
+                report.add("{} can't move down because they are already in the lowest level. ".format(self.name)) 
+        else: 
+            if self.current_level > Levels.Surface: 
+                movement = -1
+            else: 
+                report.add("{} can't move up because they are already in the highest level. ".format(self.name)) 
+        
+        if movement is not None: 
+            await self.on_global_event(report, 'move_levels', movement) 
+
+            if self.enemy is not None: 
+                report.add('{} drags {} with them! '.format(self.name, self.enemy.name)) 
+
+                await self.enemy.on_global_event(report, 'move_levels', movement) 
+
+                if self.enemy.is_a(Creature) and not self.enemy.dragged: 
+                    self.enemy.dragged = True
+                    
+                    await self.enemy.cut_drops(report) 
+
+            await self.handle_move_method(report, method) 
+    
+    @action
+    async def start_battle(self, report, enemy, surprise_attack=False): 
+        await self.use_move(report) 
+
+        self.enemy = enemy
+        enemy.enemy = self
+
+        async with enemy.acting(report): 
+            report.add('{} is now fighting {}! '.format(self.name, enemy.name)) 
+
+            await self.on_global_event(report, 'battle_start') 
+            await self.enemy.on_global_event(report, 'battle_start') 
+
+            await self.on_global_event(report, 'battle_round_start') 
+            await self.enemy.on_global_event(report, 'battle_round_start') 
+
+            proceed = self.current_hp > 0 and enemy.current_hp > 0
+
+            # noinspection PyRedundantParentheses
+            if proceed: 
+                await self.decide_first(report, surprise_attack) 
+    
+    @action
+    async def check_surprise_attack(self, report): 
+        chance = self.current_level.value - 1
+        die_roll = Die.roll_die() 
+
+        report.add('{} rolled a {}! '.format(self.name, die_roll)) 
+
+        if die_roll <= chance: 
+            report.add('{} is surprise attacked! '.format(self.name)) 
+
+            await self.fight_creature(report, surprise_attack=True) 
+        else: 
+            report.add('{} is not surprise attacked. '.format(self.name)) 
+    
+    @action
+    async def challenge_player(self, player):
+        challenge_prompt = report.add(
+            content='{0} challenges {1} to a PVP battle! React with {2} to accept and {3} to decline! This defaults to {3} if you dont react within 20 seconds. '.format(self.name, player.name, thumbs_up_emoji, thumbs_down_emoji))
+
+        reaction_emoji = await self.client.prompt_for_reaction(challenge_prompt, player.member_id, emojis=(thumbs_up_emoji, thumbs_down_emoji), timeout=20, default_emoji=thumbs_down_emoji)
+
+        if reaction_emoji == thumbs_up_emoji:
+            report.add('{} accepts the challenge! '.format(player.name))
+            await self.start_battle(player)
+        else:
+            report.add('{} declines the challenge. '.format(player.name)) 
+
+        '''
+        if self.pet is not None and self.pet.current_hp > 0: 
+          await self.pet.on_game_turn_start() 
+        if self.sub is not None and self.sub.current_hp > 0: 
+          await self.sub.on_game_turn_start() 
+        if self.blubber_base is not None and self.blubber_base.current_hp > 0: 
+          await self.blubber_base.on_game_turn_start() 
+    
+        #all their items do whatever the heck they need to do at turn start
+        for item, amount in self.items.items(): 
+          item.on_game_turn_start(self) 
+        
+        ''' 
+    
+    @action
+    async def regain_move(self, report): 
+        self.can_move = True
+
+        report.add('{} regained their move! '.format(self.name)) 
+    
+    @action
+    async def before_action(self, report):
+        # noinspection PyUnusedLocal
+        await self.regain_move(report) 
+
+        await self.check_pressure(report) 
+
+        if self.current_level > Levels.Surface: 
+            # oxygen loss and possible oxygen damage
+            self.current_oxygen -= 1
+
+            report.add('{} lost 1 oxygen! '.format(self.name)) 
+
+            await self.oxygen_changed(report) 
+
+            await self.check_current_oxygen(report) 
+
+            if self.current_hp > 0: 
+                # surprise attack
+                await self.check_surprise_attack(report) 
+    
+    async def set_name(self, report, name): 
+        if name is None: 
+            def custom_check(to_check): 
+                return self.name_custom_check(to_check.content) 
+            
+            report.add('Enter your name (it must not exceed {} characters or contain any of the following symbols: {}): '.format(self.name_limit, self.banned_str)) 
+
+            self.name = await self.client.prompt_for_message(report, self.member_id, custom_check=custom_check, timeout=20, default_choice=self.name) 
+        else: 
+            self.name = name
+
+        report.add('{} successfully set their name to {}. '.format(self.mention, self.name)) 
+    
+    @action
+    async def on_life_start(self, report): 
+        await self.set_name(report, None) 
+
+        if self.member_id in self.game.saved_stuff: 
+            to_receive = self.starting_items + self.game.saved_stuff[self.member_id]['saved_items']  
+
+            del self.game.saved_stuff[self.member_id] 
+        else: 
+            to_receive = self.starting_items
+
+        await self.receive_items(report, to_receive) 
+
+        report.add('A wild {} appeared! '.format(self.name)) 
+    
+    @action
+    async def on_game_turn_start(self, report):
+        self.uo_game_turn = True
+    
+    @action
+    async def on_game_turn_end(self, report):
+        self.uo_game_turn = False
+        self.can_move = False
+    
+    @action
+    async def on_battle_start(self, report): 
+        if not self.o_game_turn: 
+            await self.on_global_event(report, 'game_turn_start') 
+    
+    @action
+    async def on_battle_end(self, report): 
+        if not self.o_game_turn: 
+            await self.on_global_event(report, 'game_turn_end') 
+    
+    @action
+    async def on_win_coinflip(self, report): 
+        await self.start_battle_turn(report) 
+
+        report.add("{}, on your battle turn you can attack or flee. You can also do anything that doesn't require a move. ".format(self.mention)) 
+    
+    @action
+    async def on_move_levels(self, report, move_by): 
+        await Commander.on_move_levels(self, report, move_by) 
+
+        if self.current_level is Levels.Surface and self.current_oxygen < self.max_oxygen: 
+            self.current_oxygen = self.max_oxygen
+
+            report.add("{}'s oxygen refilled to max! ".format(self.name)) 
+
+            await self.oxygen_changed(report) 
+    
+    @action
+    async def attempt_flee(self, report): 
+        async with self.enemy.acting(report): 
+            report.add('{} attempts to flee! They are vulnerable! '.format(self.name))
+
+            won_flip = await self.call_and_flip(report)
+
+            if won_flip:
+                report.add('{} successfully fled! '.format(self.name)) 
+
+                await self.end_battle_turn(report) 
+                await self.leave_battle(report) 
+            else: 
+                report.add('{} failed to flee! {} can now hit them {} times! '.format(self.name, self.enemy.name, self.failed_flee_punishment)) 
+
+                await self.end_battle_turn(report) 
+
+                for time in range(self.failed_flee_punishment): 
+                    await self.enemy.start_battle_turn(report) 
+                    await self.enemy.switch_attack(report) 
+    
+    # noinspection PyUnusedLocal,PyUnusedLocal,PyUnusedLocal
+    @action
+    async def on_global_event(self, report, event_name, *args, **kwargs): 
+        if self.pet is not None: 
+            await eval('self.pet.on_{}(report, *args, **kwargs) '.format(event_name)) 
+        if self.sub is not None: 
+            await eval('self.sub.on_{}(report, *args, **kwargs) '.format(event_name)) 
+        if self.blubber_base is not None: 
+            await eval('self.blubber_base.on_{}(report, *args, **kwargs) '.format(event_name))
+
+        for item, amount in self.items:
+            await eval('item.on_{}(report, amount, *args, **kwargs) '.format(event_name)) 
+        
+        await eval('self.on_{}(report, *args, **kwargs) '.format(event_name)) 
+
+    @action
+    async def decide_first(self, report, surprise_attack): 
+        if surprise_attack:
+            self.enemy.priority += 1
+
+            report.add("{}'s priority is raised by 1 due to having the element of surprise! ".format(self.enemy.name)) 
+
+        if self.priority == self.enemy.priority:
+            won_flip = await self.call_and_flip(report)
+
+            if won_flip:
+                more_first = self
+            else:
+                more_first = self.enemy
+        else:
+            more_first = max(self, self.enemy, key=lambda side: side.priority)
+
+        report.add('{} got first hit! '.format(more_first.name)) 
+
+        if more_first.is_a(Creature) and more_first.passive: 
+            report.add('{} is passive and flees! '.format(more_first.name)) 
+
+            await more_first.leave_battle(report) 
+        else: 
+            await more_first.on_global_event(report, 'first_hit')
+            await more_first.on_global_event(report, 'win_coinflip') 
+
+    @action
+    async def calculate_hp_bleed(self, report, inflicter, penetrates, bleeds):
+        if 'player' in bleeds and 'blubber base' not in penetrates and self.blubber_base is not None and self.blubber_base.hp > 0: 
+            bleed_damage = -self.current_hp
+
+            report.add('{} bleeds onto their Blubber Base! '.format(self.name))
+            await self.blubber_base.take_damage(report, bleed_damage, inflicter=inflicter, penetrates=penetrates, bleeds=bleeds) 
+    
+    @action
+    async def on_death(self, report): 
+        self.current_hp = 0
+
+        print(1) 
+
+        await self.hp_changed(None) 
+
+        print(2) 
+
+        report.add('{} died! '.format(self.name)) 
+
+        print(3) 
+
+        if self.enemy is not None: 
+            async with self.enemy.acting(report): 
+                print(4) 
+
+                if self.battle_turn: 
+                    await self.end_battle_turn(report) 
+
+                print(5) 
+                
+                enemy = self.enemy
+
+                await self.leave_battle(report) 
+
+                print(6) 
+                
+                if enemy.is_a(Player): 
+                    await enemy.earn_items(report, self.items) 
+                
+                print(7) 
+        
+        print(8) 
+
+        self.game.saved_stuff[self.member_id] = {
+            'saved_items': tuple(self.saved_items) 
+        } 
+
+        print(9) 
+
+        await self.game.remove_player(report, self) 
+
+        print(10) 
+
+        self.suiciding = False
+
+        print(11) 
+
+        '''
+        for item_class, amount in self.saved_items:
+            item_class().salvage(self, amount) 
+
+        own_index = self.game.players.index(self) 
+
+        if allow_respawn:
+            respawn_prompt = report.add(
+                content='{}, do you want to respawn? React with {} for yes and {} for no. '.format(self.name, thumbs_up_emoji, thumbs_down_emoji))
+            respawn_emoji = await self.client.prompt_for_reaction(respawn_prompt, self.member_id, emojis=(thumbs_up_emoji, thumbs_down_emoji),
+                                                                  timeout=20, default_emoji=thumbs_up_emoji)
+
+            allow_respawn = respawn_emoji == thumbs_up_emoji
+
+        if allow_respawn:
+            report.add(
+                content='{}, choose the class you want to be. This defaults to your current class after 20 seconds. '.format(self.name))
+            class_choice = await self.client.prompt_for_message(self.channel, self.member_id,
+                                                                custom_check=lambda message: search(classes, message.content) is not None, timeout=20)
+
+            if class_choice is not None:
+                chosen_class = search(classes, class_choice)
+            else:
+                chosen_class = self.__class__
+
+                # the revived self replaces the old self
+            new_self = chosen_class(client=self.client, channel=self.channel, name=self.name, member_id=self.member_id, game=self.game)
+
+            print('new self has been created')
+
+            self.game.players[own_index] = new_self
+
+            print('new self has replaced old self')
+
+            # saved items and blubber base are transferred to new self
+            await new_self.receive_items(self.saved_items)
+
+            if self.blubber_base is not None:
+                new_self.blubber_base = self.blubber_base
+                new_self.blubber_base.owner = new_self
+
+                await new_self.blubber_base.on_receive()
+
+            await new_self.on_life_start()
+
+            if self.o_game_turn:
+                await self.game.next_turn()
+        else:
+            await self.game.remove_player(self) 
+        
+        ''' 
+    
+    @action
+    async def suicide(self, report): 
+        self.suiciding = True
+        self.needs_death_checking = True
+
+        report.add('{} prepares to suicide! '.format(self.name)) 
+
+    @action
+    async def receive_items(self, report, to_receive):
+        for item, amount in to_receive:
+            if amount > 0:
+                first_receival = False
+
+                if type(item) is type(Item):
+                    item_class = item
+                else:
+                    item_class = item.__class__
+
+                entry_item, entry_amount = receiving_entry = self.get_inv_entry(item_class)
+
+                if entry_item is None:
+                    entry_item = item_class(self.client, self.channel, self)
+                    receiving_entry = [entry_item, 0]
+
+                    self.items.append(receiving_entry)
+
+                if entry_amount == 0:
+                    first_receival = True
+
+                receiving_entry[1] += amount
+
+                report.add('{} received {} {}(s)! '.format(self.name, amount, item.name))
+
+                if entry_item.can_stack or first_receival: 
+                    await entry_item.apply_bonuses(report, amount) 
+                
+                report.add('{} now has {} {}(s)! '.format(self.name, receiving_entry[1], receiving_entry[0].name)) 
+
+    @action
+    async def earn_items(self, report, to_earn):
+        to_receive = []
+
+        for item, amount in to_earn:
+            if type(item) is type(Item): 
+                item_class = item
+            else:
+                item_class = item.__class__
+
+            final_amount = amount
+
+            if All in self.multipliers:
+                all_multiplier = self.multipliers[All]
+
+                final_amount *= all_multiplier
+
+                report.add('{} receives a x{} multiplier on all items! '.format(self.name, all_multiplier))
+            if item_class in self.multipliers:
+                item_multiplier = self.multipliers[item_class]
+
+                final_amount *= item_multiplier
+
+                report.add('{} receives a x{} multiplier on {}s! '.format(self.name, item_multiplier, item.name)) 
+            
+            final_amount = math.ceil(final_amount) 
+
+            to_receive.append([item_class, final_amount])
+
+        await self.receive_items(report, to_receive)
+
+        # forgive_debt means that it you don't have sufficient amounts of an item it will just take what you have.
+
+    @action
+    async def lose_items(self, report, to_lose):
+        taken_items = []
+
+        for item, amount in to_lose:
+            if amount > 0:
+                last_removal = False
+
+                if type(item) is type(Item):
+                    item_class = item
+                else:
+                    item_class = item.__class__
+
+                entry_item, entry_amount = losing_entry = self.get_inv_entry(item_class)
+
+                if entry_item is not None:
+                    lost_amount = min(entry_amount, amount) 
+
+                    if lost_amount > 0: 
+                        losing_entry[1] -= lost_amount
+
+                        taken_items.append([item_class, lost_amount])
+
+                        if losing_entry[1] == 0:
+                            last_removal = True
+                        
+                        report.add('{} lost {} {}(s)! '.format(self.name, lost_amount, entry_item.name)) 
+
+                        if entry_item.can_stack or last_removal: 
+                            await entry_item.remove_bonuses(report, amount) 
+                        
+                        report.add('{} now has {} {}(s)! '.format(self.name, losing_entry[1], entry_item.name)) 
+
+        return taken_items
+
+    @action
+    async def craft(self, report, item, amount): 
+        item = ttd_tools.search(items, item) 
+        amount = int(amount) 
+
+        final_recipe = [(recipe_item, recipe_amount * amount) for recipe_item, recipe_amount in item.recipe] 
+
+        lacking_items = self.lacks_items(final_recipe) 
+
+        if len(lacking_items) == 0: 
+            await self.lose_items(report, final_recipe) 
+            await self.receive_items(report, ((item, amount),)) 
+
+            await self.use_move(report) 
+        else: 
+            for lacking_item, lacking_amount in lacking_items: 
+                report.add('{} lacks {} {}(s) to craft {} {}(s). '.format(self.name, lacking_amount, lacking_item.name, amount, item.name)) 
+    
+    @action
+    async def donate(self, report, target, to_donate): 
+        async with target.acting(report): 
+            final_to_donate = [] 
+
+            for entry in to_donate: 
+                item, amount = entry
+
+                if type(amount) is str: 
+                    inv_item, inv_amount = self.get_inv_entry(item) 
+
+                    if inv_amount > 0: 
+                        actual_amount = inv_amount
+                    else: 
+                        report.add("Skipping {} because {} doesn't have any. ".format(item.name, self.name)) 
+
+                        continue
+                else: 
+                    actual_amount = amount
+                
+                final_to_donate.append((item, actual_amount)) 
+            
+            lacking_items = self.lacks_items(final_to_donate) 
+
+            if len(lacking_items) == 0: 
+                await self.lose_items(report, final_to_donate) 
+                await target.receive_items(report, final_to_donate) 
+
+                report.add('{} successfully donated to {}. '.format(self.name, target.name)) 
+            else: 
+                for lacking_item, lacking_amount in lacking_items: 
+                    report.add('{} lacks {} {}(s) to perform the donation. '.format(self.name, lacking_amount, lacking_item.name)) 
+    
+    @action
+    async def switch_attack(self, report): 
+        print('{} is now attacking {}'.format(self.name, self.enemy.name)) 
+
+        async with self.enemy.acting(report): 
+            await self.attack(report, self.enemy) 
+
+            await self.end_battle_turn(report) 
+    
+    @action
+    async def fight_creature(self, report, surprise_attack=False): 
+        creature = await self.current_level.select_creature() 
+
+        #print(creature.__init__) 
+
+        to_fight = creature(self.client, self.channel, self, current_level=self.current_level) 
+
+        print('{} is now starting battle with {}'.format(self.name, to_fight.name)) 
+        
+        await self.start_battle(report, to_fight, surprise_attack=surprise_attack) 
+    
+    @action
+    async def gather(self, report, to_gather): 
+        item = ttd_tools.search(items, to_gather) 
+
+        if item in self.current_level.gatherables: 
+            flip_1 = Die.flip_coin() 
+
+            report.add('The first flip was {}! '.format(flip_1)) 
+
+            flip_2 = Die.flip_coin() 
+
+            report.add('The second flip was {}! '.format(flip_2)) 
+
+            if flip_1 != flip_2: 
+                report.add('{} found {}! '.format(self.name, item.name)) 
+
+                await self.earn_items(report, ((item, self.current_level.gatherables[item]),)) 
+            else: 
+                report.add('{} did not find any {}'.format(self.name, item.name)) 
+            
+            await self.use_move(report) 
+        else: 
+            report.add("{} is not gatherable in {}'s current level, the {}".format(item.name, self.name, self.current_level.name)) 
+    
+    @action
+    async def end_turn(self, report): 
+        await self.game.next_turn(report) 
+    
+    @action
+    async def invite_members(self, report, members): 
+        for member in members: 
+            await self.game.add_member(report, member) 
+    
+    @action
+    async def start_game(self, report): 
+        await self.game.start(report) 
+    
+    @action
+    async def use_item(self, report, item, amount): 
+        target_item = ttd_tools.search(items, item) 
+        
+        inv_item, inv_amount = self.get_inv_entry(target_item) 
+
+        if amount.lower() == 'auto': 
+            if inv_amount > 0: 
+                auto_amount = await inv_item.auto_amount(report) 
+
+                if auto_amount is not None: 
+                    to_use = min(auto_amount, inv_amount) 
+                else: 
+                    return
+            else: 
+                report.add("{} can't auto-use {} because they don't have any. ".format(self.name, target_item.name)) 
+
+                return
+        else: 
+            to_use = int(amount) 
+        
+        if inv_amount >= to_use: 
+            if inv_item.usable: 
+                await inv_item.attempt_use(report, to_use) 
+            else: 
+                report.add('{}, your {}(s) are not currently usable. '.format(self.name, inv_item.name)) 
+        else: 
+            report.add('{}, you tried to use {} {}(s) but you only have {}. '.format(self.name, to_use, target_item.name, inv_amount)) 
+    
+    @action
+    async def free_regen(self, report): 
+        self.current_hp += self.regen_bonus
+
+        report.add("{}'s current HP increased by {}! ".format(self.name, self.regen_bonus)) 
+
+        await self.hp_changed(report) 
+
+        await self.use_move(report) 
+    
+    @action
+    async def pick_fight(self, report): 
+        await self.fight_creature(report) 
+    
+    @action
+    async def battle_call(self, report, side): 
+        print('{} is now calling against {}'.format(self.name, self.enemy.name)) 
+
+        async with self.enemy.acting(report): 
+            await self.on_global_event(report, 'battle_round_start') 
+            await self.enemy.on_global_event(report, 'battle_round_start') 
+
+            if self.current_hp > 0 and self.enemy.current_hp > 0: 
+                flip_side = Die.flip_coin() 
+
+                report.add('{} calls {}! '.format(self.name, side)) 
+                report.add("It's {}! ".format(flip_side)) 
+
+                if side.lower() == flip_side: 
+                    await self.on_global_event(report, 'win_coinflip') 
+                else: 
+                    await self.enemy.on_global_event(report, 'win_coinflip') 
+
+class Forager(Player):
+    name = 'Forager'
+    description = "Nothing escapes dis boi's eye" 
+    specials = ('Guaranteed flee on battle turn in the Surface',) 
+    starting_multipliers = {All: 1.5,} 
+
+    @action
+    async def attempt_flee(self, report): 
+        if self.current_level is Levels.Surface: 
+            async with self.enemy.acting(report): 
+                report.add('{} successfully fled! '.format(self.name)) 
+                        
+                await self.end_battle_turn(report) 
+                await self.leave_battle(report) 
+        else: 
+            await Player.attempt_flee(self, report) 
+        # end battle stuff
+
+class Berserker(Player): 
+    scaling_factor = 1
+    name = 'Berserker'
+    description = 'REE REE TRIGGER TRIGGER REE REEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE' 
+    specials = ('Attack increases with HP lost at a {} to 1 ratio'.format(scaling_factor), 'When {0} dies against a living opponent, it goes for a final hit directly to the opponent. If this hit kills the opponent, {0} is revived with 1 HP! '.format(name)) 
+    
+    def __init__(self, client, channel, game, member_id=None): 
+        self.can_revive = True
+
+        Player.__init__(self, client, channel, game, member_id=member_id) 
+    
+    def stats_embed(self): 
+        embed = Player.stats_embed(self) 
+
+        embed.add_field(name='Can use Berserker Mode', value=self.can_revive) 
+
+        return embed
+    
+    @action
+    async def hp_changed(self, report): 
+        await Player.hp_changed(self, report) 
+
+        if self.current_hp == self.max_hp and not self.can_revive: 
+            self.can_revive = True
+
+            if report is not None: 
+                report.add('{} can use Berserker Mode again! '.format(self.name)) 
+
+        self.current_attack = (self.max_hp - self.current_hp) * self.scaling_factor + self.base_attack
+
+        if report is not None: 
+            await self.attack_changed(report) 
+    
+    @action
+    async def on_death(self, report): 
+        self.current_hp = 0
+
+        await self.hp_changed(None) 
+
+        if self.enemy is not None and self.enemy.current_hp > 0: 
+            if self.can_revive: 
+                async with self.enemy.acting(report): 
+                    if self.battle_turn: 
+                        await self.end_battle_turn(report) 
+                    
+                    report.add('{0} is so triggered that they did not die immediately. {0} enters Berserker Mode and goes for a final hit! '.format(self.name)) 
+
+                    await self.start_battle_turn(report) 
+
+                    await self.switch_hit(report, self.enemy) 
+
+                    await self.end_battle_turn(report) 
+
+                    if self.enemy.current_hp == 0: 
+                        self.current_hp = 1
+
+                        report.add("{} is so happy about killing {} that they revived with 1 HP! ".format(self.name, self.enemy.name)) 
+
+                        await self.hp_changed(report) 
+
+                        self.suiciding = False
+
+                        self.can_revive = False
+
+                        report.add('{} must now heal to full HP before they can use Berserker Mode again. '.format(self.name)) 
+                    else: 
+                        report.add("But the final hit didn't kill {}... ".format(self.enemy.name)) 
+
+                        await Player.on_death(self, report) 
+            else: 
+                report.add("{} couldn't use Berserker Mode because they didn't heal to full HP after last using it. ".format(self.name)) 
+
+                await Player.on_death(self, report) 
+        else: 
+            await Player.on_death(self, report) 
+
+class Fisherman(Player):
+    name = 'Fisherman'
+    description = 'Lots of indentured servants' 
+    specials = ('Can catch 1-star creatures without a coin flip', 'Can catch 2-star creatures with a coin flip') 
+    starting_attack = 40
+    starting_items = ([Fishing_Net, 1],)
+
+
+class Hunter(Player):
+    name = 'Hunter'
+    description = 'Head of the pack' 
+    starting_hp = 150
+    starting_attack = 50
+    starting_multipliers = {Meat: 2} 
+
+class Diver(Player):
+    allowed_level_deviation = 1
+    free_moves = 1
+    
+    starting_oxygen = 6
+    name = 'Diver'
+    description = 'Dives so something'
+    specials = (
+        'Is always allowed one additional level beyond listed'.format(allowed_level_deviation), 'Can move between levels {} time(s) without using '
+                                                                                                'its move'.format(free_moves), 'Can move levels and drag their opponents with them on their battle turn') 
+    
+    def __init__(self, client, channel, game, member_id=None): 
+        self.current_free_moves = self.free_moves
+
+        Player.__init__(self, client, channel, game, member_id=member_id) 
+    
+    @action
+    async def on_shutdown(self, report): 
+        self.current_free_moves -= self.free_moves
+
+        await Player.on_shutdown(self, report) 
+    
+    @action
+    async def on_turn_on(self, report): 
+        self.current_free_moves += self.free_moves
+
+        await Player.on_turn_on(self, report) 
+    
+    def stats_embed(self): 
+        embed = Player.stats_embed(self) 
+
+        embed.add_field(name='Free moves', value='{}/{}'.format(self.current_free_moves, self.free_moves)) 
+
+        return embed
+
+    # noinspection PyUnusedLocal
+    @action
+    async def check_pressure_damage(self, report): 
+        smallest_distance = self.current_level.value
+
+        for level in self.access_levels: 
+            distance = self.current_level - level
+
+            smallest_distance = min(smallest_distance, distance) 
+        
+        smallest_distance -= self.allowed_level_deviation
+
+        if smallest_distance > 0: 
+            damage = smallest_distance * 20
+
+            report.add('{} takes pressure damage! '.format(self.name)) 
+
+            await self.take_damage(report, damage, penetrates=['shield']) 
+    
+    @action
+    async def handle_move_method(self, report, method): 
+        if method == 'free': 
+            self.current_free_moves -= 1
+
+            report.add('{} used up a free move. '.format(self.name)) 
+        elif method == 'drag': 
+            await self.end_battle_turn(report) 
+        else: 
+            await Player.handle_move_method(self, report, method) 
+    
+    @action
+    async def regain_move(self, report): 
+        await Player.regain_move(self, report) 
+
+        self.current_free_moves = self.free_moves
+
+        report.add('{} regained their {} free moves! '.format(self.name, self.free_moves)) 
+    
+    @action
+    async def on_win_coinflip(self, report): 
+        await Player.on_win_coinflip(self, report) 
+        
+        report.add('As a Diver, you can also drag. ') 
+
+''' 
+def calculate_level_multipliers(self): 
+  level = Die.roll_die() 
+  level_multiplier = (level + 1) / 5
+  
+  self.current_hp *= level_multiplier
+  self.max_hp *= level_multiplier
+  self.current_shield *= level_multiplier
+  self.max_shield *= level_multiplier
+  self.attack_damage *= level_multiplier
+  for item, amount in self.drops.items(): 
+    self.drops[item] = int(amount * level_multiplier) 
+  
+  return level
+''' 
+
+creatures = [] 
+
+class Creature_Meta(ttd_tools.GO_Meta): 
+    append_to = creatures
+
+class Creature(Commander, metaclass=Creature_Meta, append=False): 
+    starting_drops = () 
+    stars = 0
+    passive = False
+    dragged_drops_penalty = 2
+        # self.level = self.calculate_level_multipliers() 
+    
+    def __init__(self, client, channel, enemy, current_level=None): 
+        self.drops = [[item, amount] for item, amount in self.starting_drops] 
+        self.dragged = False
+
+        Commander.__init__(self, client, channel, enemy=enemy, current_level=current_level) 
+    
+    async def on_turn_on(self, report): 
+        self.drops = [[item, amount] for item, amount in self.starting_drops] 
+
+        if self.dragged: 
+            await self.cut_drops(None) 
+        
+        await Commander.on_turn_on(self, report) 
+    
+    @staticmethod
+    def modify_deconstructed(deconstructed): 
+        del deconstructed['enemy'] 
+
+        Commander.modify_deconstructed(deconstructed) 
+    
+    @classmethod
+    def help_embed(cls): 
+        embed = super(Creature, cls).help_embed() 
+
+        drops_gen = ('{} x{}'.format(item.name, amount) for item, amount in cls.starting_drops) 
+        drops_str = make_list(drops_gen) 
+
+        embed.add_field(name='Drops', value=drops_str if len(drops_str) > 0 else 'Nothing', inline=False) 
+
+        embed.add_field(name='Stars', value=cls.stars) 
+
+        embed.add_field(name='Passive', value=cls.passive) 
+
+        return embed
+    
+    def stats_embed(self): 
+        embed = Commander.stats_embed(self) 
+
+        drops_gen = ('{} x{}'.format(item.name, amount) for item, amount in self.drops) 
+        drops_str = make_list(drops_gen) 
+        
+        embed.add_field(name='Drops', value=drops_str if len(drops_str) > 0 else 'Nothing', inline=False) 
+
+        embed.add_field(name='Stars', value=self.stars) 
+
+        embed.add_field(name='Passive', value=self.passive) 
+
+        embed.add_field(name='Was dragged', value=self.dragged) 
+
+        return embed
+    
+    @action
+    async def cut_drops(self, report): 
+        for pair in self.drops: 
+            pair[1] = int(pair[1] / self.dragged_drops_penalty) 
+        
+        if report is not None: 
+            report.add("{}'s drops were cut by a factor of {} due to being dragged! ".format(self.name, self.dragged_drops_penalty)) 
+    
+    @action
+    async def drop_stuff(self, report, drop_to): 
+        if self.drops is not None: 
+            await drop_to.earn_items(report, self.drops) 
+    
+    @action
+    async def on_death(self, report): 
+        report.add('{} died! '.format(self.name)) 
+
+        if self.enemy is not None: 
+            async with self.enemy.acting(report): 
+                enemy = self.enemy
+
+                await self.leave_battle(report) 
+
+                await self.drop_stuff(report, enemy) 
+
+        # do drops here
+
+    @action
+    async def on_win_coinflip(self, report): 
+        await self.start_battle_turn(report) 
+
+        await self.switch_attack(report) 
+
+    @action
+    # noinspection PyMethodMayBeStatic
+    async def on_global_event(self, report, event_name, *args, **kwargs): 
+        await eval('self.on_{}(report, *args, **kwargs) '.format(event_name)) 
+
+    @action
+    async def switch_attack(self, report): 
+        async with self.enemy.acting(report): 
+            await self.attack(report, self.enemy) 
+
+            await self.end_battle_turn(report) 
+
+class Trout(Entity):
+    name = "Trout"
+    description = "Food - not a cat"
+    starting_hp = 50
+    starting_attack = 10
+    starting_access_levels = (Levels.Surface,) 
+
+class C_Trout(Trout, Creature): 
+    starting_drops = ([Meat, 2],) 
+
+class Ariel_Leviathan(Entity):
+    name = "Ariel Leviathan"
+    description = "A singular fragment of fecal matter that possesses 400 health points - Mastermind"
+    starting_hp = 400
+    starting_attack = 10
+    starting_access_levels = (Levels.Surface,) 
+
+class C_Ariel_Leviathan(Ariel_Leviathan, Creature): 
+    starting_drops = [Sky_Blade, 1], [Meat, 6] 
+    passive = True
+
+class Saltwater_Croc(Entity):
+    name = "Saltwater Croc"
+    description = "What's for lunch - jlscientist"
+    starting_hp = 100
+    starting_shield = 100
+    starting_attack = 100
+    starting_access_levels = (Levels.Surface,) 
+
+class C_Saltwater_Croc(Saltwater_Croc, Creature): 
+    starting_drops = [Scale, 1], [Meat, 5]
+    passive = True
+
+class Tiger_Fish(Entity):
+    rage_threshold = 50
+    rage_attack = 50
+    name = "Tiger Fish"
+    description = "I don't know - RyantheKing"
+    specials = ("Damage increases to {} if the target of its attack has {} or more damage. ".format(rage_attack, rage_threshold),)
+    starting_hp = 100
+    starting_attack = 30
+    starting_access_levels = (Levels.Surface,) 
+
+    @action
+    async def switch_hit(self, report, target):
+        former_attack = self.current_attack
+
+        if target.current_attack >= self.rage_threshold:
+            self.current_attack = self.rage_attack
+
+            report.add('{} rages, and its attack increases! '.format(self.name)) 
+
+            await self.attack_changed(report) 
+        
+        await Entity.switch_hit(self, report, target)
+
+        self.current_attack = former_attack
+
+class C_Tiger_Fish(Tiger_Fish, Creature): 
+    starting_drops = ([Meat, 1],) 
+
+class Gar(Entity):
+    name = "Gar"
+    description = "Closely GARds its 1 meat - not a cat"
+    starting_hp = 100
+    starting_attack = 30
+    starting_access_levels = (Levels.Surface,) 
+
+class C_Gar(Gar, Creature): 
+    starting_drops = ([Meat, 1],) 
+
+class Turtle(Entity):
+    name = 'Turtle'
+    description = 'Turtles' 
+    starting_hp = 80
+    starting_shield = 90
+    starting_attack = 10
+    starting_access_levels = (Levels.Surface,) 
+
+class C_Turtle(Turtle, Creature): 
+    starting_drops = [Suit, 1], [Meat, 1] 
+
+class Piranha(Entity): 
+    name = 'Piranha'
+    description = 'Om nom nom' 
+    starting_hp = 70
+    starting_attack = 10
+    starting_access_levels = (Levels.Surface,) 
+
+class C_Piranha(Piranha, Creature): 
+    per_round_attack_increase = 20
+    specials = ('Attack increases by {} every battle round'.format(per_round_attack_increase),) 
+    starting_drops = ([Meat, 1],) 
+    
+    def __init__(self, client, channel, enemy, current_level=None):
+        self.elapsed_battle_turns = 0
+
+        Creature.__init__(self, client, channel, enemy, current_level=current_level) 
+    
+    @action
+    async def on_shutdown(self, report): 
+        await Creature.on_shutdown(self, report) 
+
+        self.base_attack -= self.elapsed_battle_turns * self.per_round_attack_increase
+        self.current_attack -= self.elapsed_battle_turns * self.per_round_attack_increase
+    
+    @action
+    async def on_turn_on(self, report): 
+        await Creature.on_turn_on(self, report) 
+
+        self.base_attack += self.elapsed_battle_turns * self.per_round_attack_increase
+        self.current_attack += self.elapsed_battle_turns * self.per_round_attack_increase
+    
+    @action
+    async def on_battle_round_start(self, report):
+        self.elapsed_battle_turns += 1
+
+        self.base_attack += self.per_round_attack_increase
+        self.current_attack += self.per_round_attack_increase
+
+        report.add("{}'s base and current attack increased by {}! ".format(self.name, self.per_round_attack_increase)) 
+
+        await self.attack_changed(report) 
+
+        await Creature.on_battle_round_start(self, report) 
+
+
+class Hatchet_Fish(Entity):
+    name = 'Hatchet Fish'
+    description = 'Chop chop'
+    starting_hp = 70
+    starting_attack = 30
+    starting_access_levels = (Levels.Surface,) 
+
+class C_Hatchet_Fish(Hatchet_Fish, Creature): 
+    starting_drops = ([Hatchet_Fish_Corpse, 1],) 
+
+class Octofish(Entity):
+    name = 'Octofish'
+    description = 'stuff'
+    starting_hp = 70
+    starting_attack = 30
+    starting_access_levels = (Levels.Surface,) 
+
+class C_Octofish(Octofish, Creature): 
+    starting_drops = ([Meat, 1],) 
+
+class Big_Trout(Entity): 
+    name = 'Big Trout'
+    description = "it's like trout but big"
+    starting_hp = 60
+    starting_attack = 20
+    starting_access_levels = (Levels.Surface,) 
+
+class C_Big_Trout(Big_Trout, Creature): 
+    starting_drops = ([Meat, 4],) 
+
+class Water_Bug(Entity): 
+    starting_miss = 0
+    starting_crit = 5
+    starting_enemy_miss_bonus = 2
+    name = 'Water Bug'
+    description = 'Where did it come from? Where did it go? '
+    starting_hp = 50
+    starting_attack = 10
+    starting_access_levels = (Levels.Surface,) 
+
+class C_Water_Bug(Water_Bug, Creature): 
+    pass
+
+class Tummy_Tetra(Entity): 
+    steals = ((Meat, 1),) 
+    steals_gen = ((item.name, amount) for item, amount in steals) 
+    steals_string = ', '.join(('{} {}'.format(amount, item_name) for item_name, amount in steals_gen)) 
+
+    name = 'Tummy Tetra'
+    description = 'yum'
+    specials = ('50% chance of stealing {} from players on hit'.format(steals_string),)
+    starting_hp = 50
+    starting_attack = 30
+    starting_access_levels = (Levels.Surface,) 
+
+    @action
+    async def steal_stuff(self, report, target): 
+        report.add("{} is now looting {}'s items! ".format(self.name, target.name)) 
+
+        stolen_items = await target.lose_items(report, self.steals) 
+
+        if len(stolen_items) > 0: 
+            for item, amount in stolen_items:
+                report.add('{} stole and ate {} {}(s)! '.format(self.name, amount, item.name)) 
+
+                if item.is_usable: 
+                    to_use = item(self.client, self.channel, self) 
+
+                    await to_use.on_use(report, amount) 
+        else: 
+            report.add("But {} didn't have anything that {} wanted... ".format(target.name, self.name)) 
+    
+    @action
+    async def attempt_steal(self, report, target):
+        # reaction_member = self.channel.guild.get_member(target.member_id) 
+
+        report.add("{} lunges for {}'s inventory! ".format(self.name, target.name)) 
+
+        won_flip = await target.call_and_flip(report) 
+
+        '''
+        coin_flip_prompt.add_reaction(h_emoji) 
+        coin_flip_prompt.add_reaction(t_emoji) 
+    
+        def check(reaction, member): 
+          return reaction.message == coin_flip_prompt and reaction.emoji in (h_emoji, t_emoji) and member == reaction_member
+        
+        try: 
+          reaction, member = await self.client.wait_for('reaction_add', check=check, timeout=10) 
+          reaction_emoji = reaction.emoji 
+        except asyncio.TimeoutError: 
+          reaction_emoji = h_emoji
+        '''
+
+        if won_flip:
+            report.add('{} failed to steal anything. '.format(self.name))
+        else:
+            await self.steal_stuff(report, target) 
+    
+    @action
+    async def switch_hit(self, report, target): 
+        await Entity.switch_hit(self, report, target) 
+
+        # noinspection PyRedundantParentheses
+        if target.is_a(Player): 
+            await self.attempt_steal(report, target) 
+
+class C_Tummy_Tetra(Tummy_Tetra, Creature): 
+    pass
+
+class Toxic_Waste(Entity): 
+    name = 'Toxic Waste'
+    description = 'oof'
+    specials = ('Always gets first hit', 'Hits once and then disappears', "Gives Meat instead of attacking if the player has the Bio-Wheel ~~except you can't get it right now~~") 
+    starting_hp = float('inf') 
+    starting_attack = 30
+    starting_access_levels = (Levels.Surface, Levels.Middle) 
+    starting_penetrates = ('shield',) 
+
+class C_Toxic_Waste(Toxic_Waste, Creature): 
+    starting_priority = float('inf') 
+
+    @action
+    async def switch_attack(self, report): 
+        async with self.enemy.acting(report): 
+            await Creature.switch_attack(self, report) 
+
+            report.add('{} disappeared! '.format(self.name)) 
+
+            await self.leave_battle(report) 
+
+class Blue_Whale(Entity): 
+    name = 'Blue Whale' 
+    description = 'Mucho big' 
+    starting_hp = 600
+    starting_attack = 10
+    starting_access_levels = (Levels.Middle,) 
+
+class C_Blue_Whale(Blue_Whale, Creature): 
+    starting_drops = (Blubber, 1), (Meat, 8) 
+    passive = True
+
+class Great_White_Shark(Entity): 
+    name = 'Great White Shark' 
+    description = 'RIP' 
+    starting_hp = 300
+    starting_attack = 200
+    starting_access_levels = (Levels.Middle,) 
+
+class C_Great_White_Shark(Great_White_Shark, Creature): 
+    starting_drops = ((Meat, 10),) 
+    passive = True
+
+class Albino_Tiger_Oscar(Entity): 
+    name = 'Albino Tiger Oscar' 
+    description = 'Rare and contains valuable resources' 
+    starting_hp = 250
+    starting_attack = 70
+    starting_access_levels = (Levels.Middle,) 
+
+class C_Albino_Tiger_Oscar(Albino_Tiger_Oscar, Creature): 
+    starting_drops = (Platinum_Elixir, 1), (Meat, 8) 
+
+class Giant_Lionfish(Entity): 
+    revenge_damage = 60
+
+    name = 'Giant Lionfish' 
+    description = 'Puts up a fierce fight, but the result is so worth it' 
+    specials = ('Deals {} damage back to attacker when hit. If the damage comes from a critical hit, it deals double damage! '.format(revenge_damage),) 
+    starting_hp = 250
+    starting_attack = 60
+    starting_access_levels = (Levels.Middle,) 
+
+    @action
+    async def take_damage(self, report, damage, inflicter=None, penetrates=(), bleeds=(), crit=False): 
+        await Entity.take_damage(self, report, damage, inflicter=inflicter, penetrates=penetrates, bleeds=bleeds, crit=crit) 
+
+        if inflicter is not None: 
+            if crit: 
+                damage = self.revenge_damage * 2
+
+                report.add('{} retaliates the crit with double damage! '.format(self.name)) 
+            else: 
+                damage = self.revenge_damage
+            
+            await self.deal_damage(report, inflicter, damage, False, (), ()) 
+
+class C_Giant_Lionfish(Giant_Lionfish, Creature): 
+    starting_drops = (Platinum_Elixir, 1), (Meat, 12) 
+
+class Marlin(Entity): 
+    name = 'Marlin' 
+    description = 'Stab' 
+    starting_hp = 150
+    starting_attack = 100
+    starting_access_levels = (Levels.Middle,) 
+
+class C_Marlin(Marlin, Creature): 
+    starting_drops = ((Marlin_Sword, 1),) 
+    passive = True
+
+class Mushroom_Fish(Entity): 
+    name = 'Mushroom Fish' 
+    description = 'What' 
+    starting_hp = 150
+    starting_attack = 50
+    starting_access_levels = (Levels.Middle,) 
+
+class C_Mushroom_Fish(Mushroom_Fish, Creature): 
+    starting_drops = ((Meat, 6),) 
+
+class Tiger_Oscar(Entity): 
+    name = 'Tiger Oscar' 
+    description = 'Significantly weaker than its albino counterpart' 
+    starting_hp = 150
+    starting_attack = 30
+    starting_access_levels = (Levels.Middle,) 
+
+class C_Tiger_Oscar(Tiger_Oscar, Creature): 
+    starting_drops = ((Meat, 5),) 
+
+class Barracuda(Entity): 
+    name = 'Barracuda' 
+    description = 'Better not let it save up' 
+    starting_hp = 100
+    starting_attack = 30
+    starting_access_levels = (Levels.Middle,) 
+
+class C_Barracuda(Barracuda, Creature): 
+    per_round_hp_increase = 30
+    per_round_attack_increase = 30
+    
+    specials = ('HP increases by {} every battle round'.format(per_round_hp_increase), 'Attack damage increases by {} every battle round'.format(per_round_attack_increase)) 
+
+    def __init__(self, client, channel, enemy, current_level=None):
+        self.elapsed_battle_turns = 0
+
+        Creature.__init__(self, client, channel, enemy, current_level=current_level) 
+    
+    @action
+    async def on_shutdown(self, report): 
+        await Creature.on_shutdown(self, report) 
+
+        hp_decrease = self.elapsed_battle_turns * self.per_round_hp_increase * self.hp_multiplier
+
+        self.base_hp -= hp_decrease
+        self.current_hp -= hp_decrease
+        self.max_hp -= hp_decrease
+
+        self.base_attack -= self.elapsed_battle_turns * self.per_round_attack_increase
+        self.current_attack -= self.elapsed_battle_turns * self.per_round_attack_increase
+    
+    @action
+    async def on_turn_on(self, report): 
+        await Creature.on_turn_on(self, report) 
+
+        hp_increase = self.elapsed_battle_turns * self.per_round_hp_increase * self.hp_multiplier
+
+        self.base_hp += hp_increase
+        self.current_hp += hp_increase
+        self.max_hp += hp_increase
+
+        await self.hp_changed(None) 
+
+        self.base_attack += self.elapsed_battle_turns * self.per_round_attack_increase
+        self.current_attack += self.elapsed_battle_turns * self.per_round_attack_increase
+    
+    @action
+    async def on_battle_round_start(self, report):
+        self.elapsed_battle_turns += 1
+
+        hp_increase = self.per_round_hp_increase * self.hp_multiplier
+
+        self.base_hp += hp_increase
+        self.current_hp += hp_increase
+        self.max_hp += hp_increase
+
+        report.add("{}'s base, current, and max HP increased by {}! ".format(self.name, hp_increase)) 
+
+        await self.hp_changed(report) 
+
+        self.base_attack += self.per_round_attack_increase
+        self.current_attack += self.per_round_attack_increase
+
+        report.add("{}'s base and current attack increased by {}! ".format(self.name, self.per_round_attack_increase)) 
+
+        await self.attack_changed(report) 
+
+        await Creature.on_battle_round_start(self, report) 
+
+class Shovelnose_Guitar_Fish(Entity): 
+    name = 'Shovelnose Guitar Fish' 
+    description = 'Has an interesting head shape' 
+    starting_hp = 100
+    starting_attack = 30
+    starting_access_levels = (Levels.Middle,) 
+
+class C_Shovelnose_Guitar_Fish(Shovelnose_Guitar_Fish, Creature): 
+    starting_drops = ((Shovelnose, 1),) 
+
+class Vortex_Fish(Entity): 
+    steal_amount = 3
+
+    name = 'Vortex Fish' 
+    description = 'Succ' 
+    specials = ("When attacking Forager, will attempt to steal {} items of the player's choice".format(steal_amount),) 
+    starting_hp = 100
+    starting_attack = 20
+    starting_access_levels = (Levels.Middle,) 
+
+    @action
+    async def steal_stuff(self, report, target): 
+        report.add("{} is now looting {}'s items! ".format(self.name, target.name)) 
+
+        available_amounts = (amount for item, amount in target.items if amount > 0) 
+        total_amount = sum(available_amounts) 
+
+        num_steals = min(self.steal_amount, total_amount) 
+
+        if num_steals > 0: 
+            stealables = {item.__class__: amount for item, amount in target.items if amount > 0} 
+            stolen = {} 
+
+            for i in range(num_steals): 
+                choices = [item.name for item, amount in stealables.items() if amount > 0] 
+
+                report.add('{}, choose item {} to lose. '.format(target.name, i + 1)) 
+
+                to_lose = await self.client.prompt_for_message(report, target.member_id, choices=choices, timeout=20, default_choice=choices[0]) 
+
+                item_to_lose = ttd_tools.search(items, to_lose) 
+
+                stealables[item_to_lose] -= 1
+
+                if item_to_lose in stolen: 
+                    stolen[item_to_lose] += 1
+                else: 
+                    stolen[item_to_lose] = 1
+            
+            final_loss = [(item, amount) for item, amount in stolen.items()] 
+
+            await target.lose_items(report, final_loss) 
+        else: 
+            report.add("But {} didn't have anything for {} to steal... ".format(target.name, self.name)) 
+    
+    @action
+    async def attempt_steal(self, report, target):
+        # reaction_member = self.channel.guild.get_member(target.member_id) 
+
+        report.add("{} lunges for {}'s inventory! ".format(self.name, target.name)) 
+
+        won_flip = await target.call_and_flip(report) 
+
+        '''
+        coin_flip_prompt.add_reaction(h_emoji) 
+        coin_flip_prompt.add_reaction(t_emoji) 
+    
+        def check(reaction, member): 
+          return reaction.message == coin_flip_prompt and reaction.emoji in (h_emoji, t_emoji) and member == reaction_member
+        
+        try: 
+          reaction, member = await self.client.wait_for('reaction_add', check=check, timeout=10) 
+          reaction_emoji = reaction.emoji 
+        except asyncio.TimeoutError: 
+          reaction_emoji = h_emoji
+        '''
+
+        if won_flip:
+            report.add('{} failed to steal anything. '.format(self.name))
+        else:
+            await self.steal_stuff(report, target) 
+    
+    @action
+    async def switch_hit(self, report, target): 
+        await Entity.switch_hit(self, report, target) 
+
+        # noinspection PyRedundantParentheses
+        if target.is_a(Forager): 
+            await self.attempt_steal(report, target) 
+
+class C_Vortex_Fish(Vortex_Fish, Creature): 
+    pass
+
+class Largemouth_Bass(Entity): 
+    name = 'Largemouth Bass' 
+    description = "It's all about it" 
+    starting_hp = 80
+    starting_attack = 50
+    starting_access_levels = (Levels.Middle,) 
+
+class C_Largemouth_Bass(Largemouth_Bass, Creature): 
+    starting_drops = ((Meat, 4),) 
+
+class Tuna(Entity): 
+    name = 'Tuna' 
+    description = 'Un-piano-able' 
+    starting_hp = 70
+    starting_attack = 20
+    starting_access_levels = (Levels.Middle,) 
+
+class C_Tuna(Tuna, Creature): 
+    starting_drops = ((Meat, 5),) 
+
+class Moray_Eel(Entity): 
+    name = 'Moray Eel' 
+    description = 'Slimy' 
+    starting_hp = 50
+    starting_attack = 50
+    starting_access_levels = (Levels.Middle,) 
+
+class C_Moray_Eel(Moray_Eel, Creature): 
+    starting_drops = ((Slime_Coat, 1),) 
+
+class Electric_Eel(Entity): 
+    name = 'Electric Eel' 
+    description = '**Shock**ingly strong' 
+    specials = ('When it attacks, a coin flip is used to determine if it stuns its target. If it successfully gets the stun, it gets to hit again! ',) 
+    starting_hp = 50
+    starting_attack = 20
+    starting_access_levels = (Levels.Middle,) 
+
+    @action
+    async def switch_hit(self, report, target): 
+        stunned = True
+
+        while stunned: 
+            await Entity.switch_hit(self, report, target) 
+
+            report.add('{} attempts to stun {}! '.format(self.name, target.name)) 
+
+            stunned = not await target.call_and_flip(report) 
+
+            if stunned: 
+                report.add('{} is stunned! {} gets to attack again! '.format(target.name, self.name)) 
+            else: 
+                report.add('{} failed to stun {}. '.format(self.name, target.name)) 
+
+class C_Electric_Eel(Electric_Eel, Creature): 
+    starting_drops = ((Watt, 5),) 
+
+class Pufferfish(Entity): 
+    name = 'Pufferfish' 
+    description = 'Puffy' 
+    starting_hp = 50
+    starting_attack = 35
+    starting_access_levels = (Levels.Middle,) 
+
+class C_Pufferfish(Pufferfish, Creature): 
+    oxygen_drop = 1
+    
+    specials = ('Gives the player {} oxygen upon death'.format(oxygen_drop),) 
+    starting_drops = ((Pufferfish_Corpse, 1),) 
+
+    @action
+    async def drop_stuff(self, report, drop_to): 
+        await Creature.drop_stuff(self, report, drop_to) 
+
+        drop_to.current_oxygen += self.oxygen_drop
+
+        report.add("{}'s current oxygen increased by {}! ".format(drop_to.name, self.oxygen_drop)) 
+
+        await drop_to.oxygen_changed(report) 
+
+class Great_Diving_Minnow(Entity): 
+    name = 'Great Diving Minnow' 
+    description = 'Good at diving' 
+    starting_hp = 50
+    starting_attack = 10
+    starting_access_levels = (Levels.Middle,) 
+
+class C_Great_Diving_Minnow(Great_Diving_Minnow, Creature): 
+    pass
+
+class Reefback(Entity): 
+    name = 'Reefback' 
+    description = 'Immensely powerful. Creatures like to hide behind it for protection. The {} itself, however, is peaceful and never engages in combat. '.format(name) 
+    starting_hp = float('inf') 
+    starting_access_levels = (Levels.Middle,) 
+
+class C_Reefback(Reefback, Creature): 
+    hp_multiplier_bonus = 1.5
+    
+    specials = ('When fought, instead of engaging, it gets replaced with another random Middle creature. This creature will then fight you with a {}x increase in HP. '.format(hp_multiplier_bonus),) 
+
+    async def on_battle_start(self, report): 
+        invalid = True
+
+        while invalid: 
+            new_creature = await Levels.Middle.select_creature() 
+
+            invalid = new_creature is self.__class__ 
+        
+        new_enemy = new_creature(self.client, self.channel, enemy=self.enemy, current_level=self.current_level) 
+
+        self.enemy.enemy = new_enemy
+
+        report.add('{} is replaced with {}! '.format(self.name, new_enemy.name)) 
+
+        report.add("{} gains extra HP thanks to {}'s protection! ".format(new_enemy.name, self.name)) 
+
+        await new_enemy.change_hp_multiplier(report, self.hp_multiplier_bonus) 
+
+        await new_enemy.on_battle_start(report) 
+
+level_stats = {
+    1: {
+        #surface
+        'creatures': {
+            C_Ariel_Leviathan: 1,
+            C_Saltwater_Croc: 1,
+            C_Tiger_Fish: 1,
+            C_Gar: 1,
+            C_Turtle: 3,
+            C_Piranha: 1,
+            C_Hatchet_Fish: 1,
+            C_Octofish: 1,
+            C_Big_Trout: 1,
+            C_Water_Bug: 1,
+            C_Tummy_Tetra: 1,
+            C_Trout: 2,
+            C_Toxic_Waste: 2, 
+        }, 
+        'gatherables': {
+            Coral: 2, 
+        }, 
+        'mineables': {}, 
+    }, 
+
+    2: {
+        'creatures': {
+            C_Blue_Whale: 1, 
+            C_Great_White_Shark: 1, 
+            C_Albino_Tiger_Oscar: 1, 
+            C_Giant_Lionfish: 1, 
+            C_Marlin: 1, 
+            C_Mushroom_Fish: 1, 
+            C_Tiger_Oscar: 1, 
+            C_Barracuda: 1, 
+            C_Shovelnose_Guitar_Fish: 1,
+            C_Vortex_Fish: 1, 
+            C_Largemouth_Bass: 1, 
+            C_Tuna: 1, 
+            C_Moray_Eel: 1, 
+            C_Electric_Eel: 1, 
+            C_Pufferfish: 1, 
+            C_Great_Diving_Minnow: 1, 
+            C_Reefback: 1, 
+            C_Toxic_Waste: 3, 
+        }, 
+        'gatherables': {
+            Wood: 1, 
+            Coral: 2, 
+        }, 
+        'mineables': {}, 
+    }, 
+} 
+
+for level in Levels: 
+    level.set_stats(level_stats) 
+    
+'''
+def select_creature(self, client, channel): 
+    # picks a random creature here
+    to_pick = random.randint(1, self.total_creatures) 
+    running_sum = 0
+
+    for creature, amount in self.creatures.items(): 
+        running_sum += amount
+
+        if running_sum >= to_pick: 
+            return creature(client, channel, current_level=self) 
+
+Surface = enum.auto() 
+''' 
+
+'''
+async def apply_multipliers(self, target, amount): 
+  if amount != 0:  
+    if self.hp_bonus != 0: 
+      hp_gain = self.hp_bonus * amount
+      target.base_hp += hp_gain
+      report.add("{}'s base HP increased by {}! ".format(target.name, hp_gain)) 
+      target.current_hp += hp_gain
+      report.add('{} gained {} HP! '.format(target.name, hp_gain)) 
+      target.max_hp += hp_gain
+      report.add("{}'s max HP increased by {}! ".format(target.name, hp_gain)) 
+      
+      target.check_death() 
+    
+    if self.shield_bonus != 0: 
+      shield_gain = self.shield_bonus * amount
+      target.base_shield += shield_gain
+      report.add("{}'s base shield increased by {}! ".format(target.name, shield_gain)) 
+      target.current_shield += shield_gain
+      report.add('{} gained {} shield! '.format(target.name, shield_gain)) 
+      target.max_shield += shield_gain
+      report.add("{}'s max shield increased by {}! ".format(target.name, shield_gain)) 
+      
+      target.check_current_shield() 
+    
+    if self.attack_bonus != 0: 
+      attack_gain = self.attack_bonus * amount
+      target.base_attack += attack_gain
+      report.add("{}'s base attack increased by {}! ".format(target.name, attack_gain)) 
+      target.current_attack += attack_gain
+      report.add('{} gained {} attack! '.format(target.name, attack_gain)) 
+    
+    if self.oxygen_bonus != 0: 
+      oxygen_gain = self.oxygen_bonus * amount
+      target.current_oxygen += oxygen_gain
+      report.add('{} gained {} oxygen! '.format(target.name, oxygen_gain)) 
+      target.max_oxygen += oxygen_gain
+'''
+
+# experiment space
+
+'''def apply_multiplier_to_dict(multiplier, stats): 
+  for stat in stats: 
+    if type(stats[stat]) is dict: 
+      stats[stat] = apply_multiplier_to_dict(multiplier, stats[stat]) 
+    else: 
+      try: 
+        stats[stat] *= multiplier
+      except (TypeError, ValueError): 
+        pass
+  
+  return stats ''' 
