@@ -1,5 +1,3 @@
 import setuptools
 
-setuptools.setup(name='To the Depths', version='0.1', packages=['to_the_depths'], 
-								 install_requires=['discord.py @ dkjfhdjshfkdshfjksdhfjkdshfkjsdhf'], 
-								 setup_requires=['discord.py @ dkfjhkdsjflksdjflkdsjflksdfj']) 
+setuptools.setup(name='To the Depths', version='0.42', packages=('to_the_depths',), install_requires=('discord',), setup_requires=('discord',)) 
