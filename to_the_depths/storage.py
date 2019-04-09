@@ -9,10 +9,8 @@ class Deconstructable:
         print('test') 
 
     @staticmethod
-    def reconstruct(to_reconstruct, *args, **kwargs):
-        import ttd_tools
-        import catalog
-        import game
+    def reconstruct(to_reconstruct, *args, **kwargs): 
+        from . import ttd_tools, catalog, game
 
         class_object = to_reconstruct['class_object'] 
         class_object = eval(class_object) 
