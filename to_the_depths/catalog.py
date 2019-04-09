@@ -7,9 +7,9 @@ import logging
 import asyncio
 import copy
 from . import chars, printing, ttd_tools
-from chars import * 
-from printing import print
-from ttd_tools import format_iterable, make_list
+from .chars import * 
+from .printing import print
+from .ttd_tools import format_iterable, make_list
 
 '''
 Functions that propagate Entity.check_death()'s boolean: 
