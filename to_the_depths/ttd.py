@@ -36,7 +36,9 @@ def pickle_dump(file, thing):
 def pickle_load(file, default): 
     file.seek(0) 
 
-    try:
+    try: 
+        print(catalog) 
+        
         result = pickle.load(file) 
     except EOFError: 
         print('empty') 
