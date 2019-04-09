@@ -1,2 +1,2 @@
 from . import ttd
-from ttd import TTD_Bot
+from .ttd import TTD_Bot
