@@ -1,7 +1,6 @@
 import discord
-import printing
+from . import printing, ttd_tools
 from printing import print
-import ttd_tools
 from ttd_tools import format_iterable
 
 '''
