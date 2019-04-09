@@ -37,7 +37,8 @@ def pickle_load(file, default):
     file.seek(0) 
 
     try: 
-        print(catalog) 
+        for i in range(100): 
+            print(catalog) 
         
         result = pickle.load(file) 
     except EOFError: 
