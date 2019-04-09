@@ -1,6 +1,6 @@
 import copy
 from . import printing
-from printing import print
+from .printing import print
 
 class Deconstructable:
     def __init__(self):
