@@ -4,8 +4,8 @@ import logging
 # noinspection PyPackageRequirements
 import discord
 from . import custom_contextlib as contextlib, printing, ttd_tools, catalog
-from printing import print
-from ttd_tools import format_iterable
+from .printing import print
+from .ttd_tools import format_iterable
 
 '''
 to-do
