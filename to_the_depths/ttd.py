@@ -3,7 +3,6 @@
 import sys
 import pickle
 import asyncio
-import logging
 import os
 import copy
 # noinspection PyPackageRequirements
