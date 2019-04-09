@@ -6,11 +6,9 @@ import discord
 import logging
 import asyncio
 import copy
-import chars
+from . import chars, printing, ttd_tools
 from chars import * 
-import printing
 from printing import print
-import ttd_tools
 from ttd_tools import format_iterable, make_list
 
 '''
