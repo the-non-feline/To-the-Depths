@@ -1,6 +1,6 @@
 import discord
 from . import printing
-from printing import print
+from .printing import print
 
 class Report: 
     def __init__(self, client, channel): 
