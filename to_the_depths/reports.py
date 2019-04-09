@@ -1,5 +1,5 @@
 import discord
-import printing
+from . import printing
 from printing import print
 
 class Report: 
