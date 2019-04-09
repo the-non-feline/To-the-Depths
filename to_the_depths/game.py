@@ -3,12 +3,9 @@ import asyncio
 import logging
 # noinspection PyPackageRequirements
 import discord
-import custom_contextlib as contextlib
-import printing
+from . import custom_contextlib as contextlib, printing, ttd_tools, catalog
 from printing import print
-import ttd_tools
 from ttd_tools import format_iterable
-import catalog
 
 '''
 to-do
