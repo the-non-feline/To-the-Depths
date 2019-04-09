@@ -1,9 +1,7 @@
 import discord
-import chars
+from . import chars, printing, storage
 from chars import * 
-import printing
 from printing import print
-import storage
 
 def make_list(list_items, numbered=False):
     to_join = list(list_items)
