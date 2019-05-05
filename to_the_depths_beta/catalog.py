@@ -3047,7 +3047,7 @@ class Creature(Commander, metaclass=Creature_Meta, append=False):
     def modify_deconstructed(deconstructed): 
         del deconstructed['enemy'] 
         
-        for entry in self.drops: 
+        for entry in deconstructed['drops']: 
             entry[0] = entry[0].__name__ 
 
         Commander.modify_deconstructed(deconstructed) 
