@@ -6,13 +6,10 @@ import discord
 import logging
 import asyncio
 import copy
-import chars
-from chars import * 
-import printing
-from printing import print
-import storage
-import ttd_tools
-from ttd_tools import format_iterable, make_list
+from . import chars, printing, storage, ttd_tools
+from .chars import * 
+from .printing import print
+from .ttd_tools import format_iterable, make_list
 
 '''
 Functions that propagate Entity.check_death()'s boolean: 
