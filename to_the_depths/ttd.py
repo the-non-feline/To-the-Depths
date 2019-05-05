@@ -9,8 +9,8 @@ import copy
 # noinspection PyPackageRequirements
 import discord
 from . import chars, printing, reports, storage, ttd_tools, catalog, game as g, commands
-from chars import * 
-from printing import print
+from .chars import * 
+from .printing import print
 
 '''
 add help message for when the user enters an invalid command
