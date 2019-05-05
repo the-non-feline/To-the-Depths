@@ -18,7 +18,7 @@ class Deconstructable(metaclass=D_Meta):
 
     @staticmethod
     def reconstruct(to_reconstruct, *args, **kwargs): 
-        from . import catallog, game
+        from . import catalog, game
         
         class_name = to_reconstruct['class_name'] 
         class_object = eval(class_name) 
