@@ -3046,8 +3046,15 @@ class Creature(Commander, metaclass=Creature_Meta, append=False):
     @staticmethod
     def modify_deconstructed(deconstructed): 
         del deconstructed['enemy'] 
+        
+        for entry in self.drops: 
+            entry[0] = entry[0].__name__ 
 
         Commander.modify_deconstructed(deconstructed) 
+    
+    def reconstruct_next(self): 
+        for entry in self.drops: 
+            entry[0] = eval(entry[0]) 
     
     @classmethod
     def help_embed(cls): 
