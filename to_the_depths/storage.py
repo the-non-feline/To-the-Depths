@@ -1,6 +1,6 @@
 import copy
-import printing
-from printing import print
+from . import printing
+from .printing import print
 
 class D_Meta(type): 
     def __repr__(cls): 
