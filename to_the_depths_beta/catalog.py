@@ -3055,6 +3055,8 @@ class Creature(Commander, metaclass=Creature_Meta, append=False):
     def reconstruct_next(self): 
         for entry in self.drops: 
             entry[0] = eval(entry[0]) 
+        
+        Commander.reconstruct_next(self) 
     
     @classmethod
     def help_embed(cls): 
