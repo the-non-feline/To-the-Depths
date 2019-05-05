@@ -3047,16 +3047,14 @@ class Creature(Commander, metaclass=Creature_Meta, append=False):
     def modify_deconstructed(deconstructed): 
         del deconstructed['enemy'] 
         
-        for entry in deconstructed['drops']: 
-            entry[0] = entry[0].__name__ 
+        deconstructed['drops'] = [[item.__name__, amount] for item, amount in deconstructed['drops']] 
 
         Commander.modify_deconstructed(deconstructed) 
         
         print(deconstructed) 
     
     def reconstruct_next(self): 
-        for entry in self.drops: 
-            entry[0] = eval(entry[0]) 
+        self.drops = [[eval(item_name), amount] for item_name, amount in self.drops] 
         
         Commander.reconstruct_next(self) 
         
