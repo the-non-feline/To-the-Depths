@@ -1,7 +1,0 @@
-thumbs_up_emoji = chr(0x1F44D)
-thumbs_down_emoji = chr(0x1F44E)
-h_emoji = chr(0x1F1ED)
-t_emoji = chr(0x1F1F9)
-bullet_point = chr(9702) 
-monkey_head_emoji = chr(0x1F435) 
-zipper_mouth_emoji = chr(0x1F910) 
