@@ -3051,12 +3051,16 @@ class Creature(Commander, metaclass=Creature_Meta, append=False):
             entry[0] = entry[0].__name__ 
 
         Commander.modify_deconstructed(deconstructed) 
+        
+        print(deconstructed) 
     
     def reconstruct_next(self): 
         for entry in self.drops: 
             entry[0] = eval(entry[0]) 
         
         Commander.reconstruct_next(self) 
+        
+        print(self.__dict__) 
     
     @classmethod
     def help_embed(cls): 
