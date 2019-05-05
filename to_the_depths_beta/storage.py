@@ -1,5 +1,4 @@
 import copy
-from .. import to_the_depths_beta
 from . import printing
 from .printing import print
 
@@ -19,6 +18,7 @@ class Deconstructable(metaclass=D_Meta):
 
     @staticmethod
     def reconstruct(to_reconstruct, *args, **kwargs): 
+        import to_the_depths_beta
         from . import catalog, game
         
         class_name = to_reconstruct['class_name'] 
