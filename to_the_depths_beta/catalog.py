@@ -533,7 +533,7 @@ class Weapon(Item, append=False):
         self.owner.base_attack -= self.attack_bonus
         self.owner.current_attack -= self.attack_bonus
 
-        report.add("{}'s base and current attack decreased by {}! ".format(self.owner.name, self.attack_increase))
+        report.add("{}'s base and current attack decreased by {}! ".format(self.owner.name, self.attack_bonus))
 
         await self.owner.attack_changed(report) 
 
