@@ -2941,11 +2941,12 @@ class Diver(Player):
     allowed_level_deviation = 1
     free_moves = 1
     
+    starting_hp = 130
     starting_oxygen = 6
     name = 'Diver'
     description = 'Dives so something'
     specials = (
-        'Is always allowed one additional level beyond listed'.format(allowed_level_deviation), 'Can move between levels {} time(s) without using '
+        'Is always allowed {} additional level beyond listed'.format(allowed_level_deviation), 'Can move between levels {} time(s) without using '
                                                                                                 'its move'.format(free_moves), 'Can move levels and drag their opponents with them on their battle turn') 
     
     def __init__(self, client, channel, game, member_id=None): 
