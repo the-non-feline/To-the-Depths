@@ -3201,7 +3201,7 @@ class Gar(Entity):
     name = "Gar"
     description = "Closely GARds its 1 meat - not a cat"
     starting_hp = 100
-    starting_attack = 30
+    starting_attack = 40
     starting_access_levels = (Levels.Surface,) 
 
 class C_Gar(Gar, Creature): 
