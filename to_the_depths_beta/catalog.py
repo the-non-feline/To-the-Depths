@@ -1252,7 +1252,7 @@ class Entity(Events):
         self.current_level = current_level
 
         self.current_actions = 0
-        self.needs_death_checking = False
+        self.dead = False
 
         Events.__init__(self, client, channel) 
     
@@ -1287,10 +1287,7 @@ class Entity(Events):
                 print('{} is now running {} actions'.format(self.entity.name, self.entity.current_actions)) 
 
                 if self.entity.current_actions == 0: 
-                    if self.entity.needs_death_checking: 
-                        print('now checking if {} dies'.format(self.entity.name)) 
-
-                        await self.entity.check_death(self.report) 
+                    await self.entity.check_death(self.report) 
         
         return Acting() 
 
@@ -1443,9 +1440,6 @@ class Entity(Events):
 
         return embed
     
-    def should_die(self): 
-        return self.current_hp == 0
-    
     def level_deviation(self): 
         least_distance = self.current_level.value
         
@@ -1457,12 +1451,20 @@ class Entity(Events):
         return least_distance
     
     @action
+    async def check_death(self, report): 
+        if self.dead: 
+            await self.on_death(report) 
+            
+            self.dead = False
+    
+    @action
     async def hp_changed(self, report): 
-        self.needs_death_checking = True
-
         self.current_hp = min(self.current_hp, self.max_hp) 
         self.current_hp = max(self.current_hp, 0) 
-
+        
+        if self.current_hp == 0: 
+            self.dead = True
+            
         if report is not None: 
             report.add('{} has {}/{} HP now! '.format(self.name, self.current_hp, self.max_hp)) 
     
@@ -1494,24 +1496,6 @@ class Entity(Events):
     @action
     async def attack_changed(self, report): 
         report.add('{} has {} attack now! '.format(self.name, self.current_attack)) 
-    
-    @action
-    async def check_death(self, report): 
-        # current hp exceeds max hp
-        # self died
-        # there is actually a reason this is not elif, just in case somehow your max_hp is 0
-        try: 
-            if self.should_die(): 
-                # implement on_death() soon
-                await self.on_death(report) 
-
-                print(12) 
-        finally: 
-            print(13) 
-            
-            self.needs_death_checking = False
-
-            print('no longer needs death checking') 
 
     # the following two are just for being able to output a message in addition to changing HP.
     # commented out for the moment while i think about how to do hp changes
@@ -1938,9 +1922,6 @@ class Player(Commander, metaclass=Player_Meta, append=False):
             self.enemy = self.reconstruct(self.enemy, self.client, self.channel, self) 
 
         Commander.reconstruct_next(self) 
-    
-    def should_die(self): 
-        return Commander.should_die(self) or self.suiciding
     
     @action
     async def on_shutdown(self, report): 
@@ -2519,10 +2500,9 @@ class Player(Commander, metaclass=Player_Meta, append=False):
     
     @action
     async def suicide(self, report): 
-        self.suiciding = True
-        self.needs_death_checking = True
+        self.dead = True
 
-        report.add('{} prepares to suicide! '.format(self.name)) 
+        report.add('{} suicides! '.format(self.name)) 
 
     @action
     async def receive_items(self, report, to_receive):
@@ -2850,7 +2830,7 @@ class Berserker(Player):
     scaling_factor = 1
     name = 'Berserker'
     description = 'REE REE TRIGGER TRIGGER REE REEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE' 
-    specials = ('Attack increases with HP lost at a {} to 1 ratio'.format(scaling_factor), 'When {0} dies against a living opponent, it goes for a final hit directly to the opponent. If this hit kills the opponent, {0} is revived with 1 HP! '.format(name)) 
+    specials = ('Attack increases with HP lost at a {} to 1 ratio'.format(scaling_factor), 'Berserker Mode - when {0} dies against a living opponent, it goes for a final hit directly to the opponent. If this hit kills the opponent, {0} is revived with 1 HP! '.format(name)) 
     
     def __init__(self, client, channel, game, member_id=None): 
         self.can_revive = True
