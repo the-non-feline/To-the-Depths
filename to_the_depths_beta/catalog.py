@@ -1287,7 +1287,10 @@ class Entity(Events):
                 print('{} is now running {} actions'.format(self.entity.name, self.entity.current_actions)) 
 
                 if self.entity.current_actions == 0: 
-                    await self.entity.check_death(self.report) 
+                    if self.entity.dead: 
+                        self.entity.dead = False
+                        
+                        await self.entity.on_death(self.report) 
         
         return Acting() 
 
@@ -1449,13 +1452,6 @@ class Entity(Events):
             least_distance = min(distance, least_distance) 
         
         return least_distance
-    
-    @action
-    async def check_death(self, report): 
-        if self.dead: 
-            await self.on_death(report) 
-            
-            self.dead = False
     
     @action
     async def hp_changed(self, report): 
