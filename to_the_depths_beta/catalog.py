@@ -1288,9 +1288,7 @@ class Entity(Events):
 
                 if self.entity.current_actions == 0: 
                     if self.entity.dead: 
-                        self.entity.dead = False
-                        
-                        await self.entity.on_death(self.report) 
+                        await self.entity.die(self.report) 
         
         return Acting() 
 
@@ -1452,6 +1450,13 @@ class Entity(Events):
             least_distance = min(distance, least_distance) 
         
         return least_distance
+    
+    @action
+    async def die(self, report): 
+        try: 
+            await self.on_death(report) 
+        finally: 
+            self.dead = False
     
     @action
     async def hp_changed(self, report): 
