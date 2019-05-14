@@ -2278,7 +2278,8 @@ class Player(Commander, metaclass=Player_Meta, append=False):
         await self.set_name(report, None) 
 
         if self.member_id in self.game.saved_stuff: 
-            to_receive = self.starting_items + self.game.saved_stuff[self.member_id]['saved_items']  
+            saved_items = tuple(((eval(item_name), amount) for item_name, amount in self.game.saved_stuff[self.member_id]['saved_items'])) 
+            to_receive = self.starting_items + saved_items
 
             del self.game.saved_stuff[self.member_id] 
         else: 
@@ -2432,9 +2433,11 @@ class Player(Commander, metaclass=Player_Meta, append=False):
                 print(7) 
         
         print(8) 
+        
+        saved_items = tuple(((item.__name__, amount) for item, amount in self.saved_items)) 
 
         self.game.saved_stuff[self.member_id] = {
-            'saved_items': tuple(self.saved_items) 
+            'saved_items': saved_items, 
         } 
 
         print(9) 
