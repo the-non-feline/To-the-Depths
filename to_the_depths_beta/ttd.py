@@ -8,7 +8,7 @@ import os
 import copy
 # noinspection PyPackageRequirements
 import discord
-from . import chars, printing, reports, storage, ttd_tools, catalog, game as g, commands
+from . import chars, printing, reports, storage, ttd_tools, catalog, game as g, commands, help_articles
 from .chars import * 
 from .printing import print
 
@@ -98,6 +98,7 @@ class TTD_Bot(discord.Client, storage.Deconstructable):
             'classes': catalog.classes, 
             'creatures': catalog.creatures, 
             'commands': self.channel_commands(channel), 
+            'guides': help_articles.articles, 
         } 
         
         categories['all'] = sum(categories.values(), []) 
