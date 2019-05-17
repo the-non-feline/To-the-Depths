@@ -1219,6 +1219,8 @@ class Entity(Events):
     starting_crit = 6
     starting_enemy_miss_bonus = 0
     starting_enemy_crit_bonus = 0
+    starting_anti_missed = 0
+    starting_anti_critted = 0
     starting_access_levels = ()
     starting_penetrates = ()
     starting_bleeds = () 
@@ -1242,6 +1244,8 @@ class Entity(Events):
         self.crit = self.starting_crit
         self.enemy_miss_bonus = self.starting_enemy_miss_bonus
         self.enemy_crit_bonus = self.starting_enemy_crit_bonus
+        self.anti_missed = self.starting_anti_missed
+        self.anti_critted = self.starting_anti_critted
         # if your level is not in this, you can still go there, but you will take pressure damage.
         self.access_levels = list(self.starting_access_levels)
         # your attack bypasses these
@@ -1333,6 +1337,8 @@ class Entity(Events):
         self.crit -= self.starting_crit
         self.enemy_miss_bonus -= self.starting_enemy_miss_bonus
         self.enemy_crit_bonus -= self.starting_enemy_crit_bonus
+        self.anti_missed -= self.starting_anti_missed
+        self.anti_critted -= self.starting_anti_critted
         self.access_levels = subtract_lists(self.access_levels, self.starting_access_levels)
         self.penetrates = subtract_lists(self.penetrates, self.starting_penetrates)
         self.bleeds = subtract_lists(self.bleeds, self.starting_bleeds) 
@@ -1362,6 +1368,8 @@ class Entity(Events):
         self.crit += self.starting_crit
         self.enemy_miss_bonus += self.starting_enemy_miss_bonus
         self.enemy_crit_bonus += self.starting_enemy_crit_bonus
+        self.anti_missed += self.starting_anti_missed
+        self.anti_critted += self.starting_anti_critted
         self.access_levels.extend(self.starting_access_levels)
         self.penetrates.extend(self.starting_penetrates)
         self.bleeds.extend(self.starting_bleeds) 
@@ -1391,6 +1399,8 @@ class Entity(Events):
         embed.add_field(name='Crits on', value=crit_string if len(crit_string) > 0 else 'Cannot crit')
         embed.add_field(name='Enemy Miss Bonus', value='{:+}'.format(cls.starting_enemy_miss_bonus))
         embed.add_field(name='Enemy Crit Bonus', value='{:+}'.format(cls.starting_enemy_crit_bonus)) 
+        embed.add_field(name='Can be missed', value=cls.starting_anti_missed <= 0) 
+        embed.add_field(name='Can be crit', value=cls.starting_anti_critted <= 0) 
 
         access_levels_string = format_iterable((level.name for level in cls.starting_access_levels)) 
 
@@ -1426,7 +1436,9 @@ class Entity(Events):
         embed.add_field(name='Misses on', value=miss_string if len(miss_string) > 0 else 'Cannot miss')
         embed.add_field(name='Crits on', value=crit_string if len(crit_string) > 0 else 'Cannot crit')
         embed.add_field(name='Enemy Miss Bonus', value=self.enemy_miss_bonus)
-        embed.add_field(name='Enemy Crit Bonus', value=self.enemy_crit_bonus)
+        embed.add_field(name='Enemy Crit Bonus', value=self.enemy_crit_bonus) 
+        embed.add_field(name='Can be missed', value=self.anti_missed <= 0) 
+        embed.add_field(name='Can be crit', value=self.anti_critted <= 0) 
 
         access_levels_string = format_iterable((level.name for level in self.access_levels))
 
@@ -1623,9 +1635,9 @@ class Entity(Events):
 
             report.add('{} rolled a {}! '.format(self.name, attack_roll))
 
-            if attack_roll <= miss:
+            if target.anti_missed <= 0 and attack_roll <= miss:
                 await self.on_miss(report, target)
-            elif attack_roll >= crit: 
+            elif target.anti_critted <= 0 and attack_roll >= crit: 
                 await self.on_crit(report, target) 
             else: 
                 await self.on_regular_hit(report, target) 
