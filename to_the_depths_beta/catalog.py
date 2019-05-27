@@ -478,7 +478,7 @@ class Armor(Item, append=False):
     def add_effects(cls, effects): 
         super(Armor, cls).add_effects(effects) 
         
-        effects.append(f"Increases the player's base, current, and max HP by {cls.hp_bonus} (affected by HP multiplier stat) ") 
+        effects.append(f'Increases the player\'s base, current, and max HP by {cls.hp_bonus} (affected by "HP Multiplier" stat) ')  
     
     async def apply_bonuses(self, report, amount):
         hp_increase = self.hp_bonus * self.owner.hp_multiplier
@@ -506,34 +506,42 @@ class Weapon(Item, append=False):
     attack_bonus = 0
 
     async def on_shutdown(self, report, amount):
-        if amount > 0:
-            self.owner.base_attack -= self.attack_bonus
-            self.owner.current_attack -= self.attack_bonus
+        if amount > 0: 
+            attack_decrease = self.attack_bonus * self.owner.attack_multiplier
+
+            self.owner.base_attack -= attack_decrease
+            self.owner.current_attack -= attack_decrease
 
     async def on_turn_on(self, report, amount):
-        if amount > 0:
-            self.owner.base_attack += self.attack_bonus
-            self.owner.current_attack += self.attack_bonus
+        if amount > 0: 
+            attack_increase = self.attack_bonus * self.owner.attack_multiplier
+
+            self.owner.base_attack += attack_increase
+            self.owner.current_attack += attack_increase
     
     @classmethod
     def add_effects(cls, effects): 
         super(Weapon, cls).add_effects(effects) 
         
-        effects.append(f"Increases the player's base and current attack damage by {cls.attack_bonus}") 
+        effects.append(f'Increases the player\'s base and current attack damage by {cls.attack_bonus} (affected by "Attack Damage Multiplier" stat) ') 
 
-    async def apply_bonuses(self, report, amount):
-        self.owner.base_attack += self.attack_bonus
-        self.owner.current_attack += self.attack_bonus
+    async def apply_bonuses(self, report, amount): 
+        attack_increase = self.attack_bonus * self.owner.attack_multiplier
 
-        report.add("{}'s base and current attack increased by {}! ".format(self.owner.name, self.attack_bonus))
+        self.owner.base_attack += attack_increase
+        self.owner.current_attack += attack_increase
+
+        report.add("{}'s base and current attack increased by {}! ".format(self.owner.name, attack_increase)) 
 
         await self.owner.attack_changed(report)
 
-    async def remove_bonuses(self, report, amount):
-        self.owner.base_attack -= self.attack_bonus
-        self.owner.current_attack -= self.attack_bonus
+    async def remove_bonuses(self, report, amount): 
+        attack_decrease = self.attack_bonus * self.owner.attack_multiplier
 
-        report.add("{}'s base and current attack decreased by {}! ".format(self.owner.name, self.attack_bonus))
+        self.owner.base_attack -= attack_decrease
+        self.owner.current_attack -= attack_decrease
+
+        report.add("{}'s base and current attack decreased by {}! ".format(self.owner.name, attack_decrease)) 
 
         await self.owner.attack_changed(report) 
 
@@ -1081,7 +1089,7 @@ class Flaming_Platinum_Sword(Weapon):
     
     name = 'Flaming Platinum Sword of Ultra Death' 
     description = 'An ultra-deadly flaming platinum sword' 
-    specials = (f'Damage increases by {per_round_attack_increase} every battle round', 'Damage resets to normal at the end of every battle') 
+    specials = (f'Damage increases by {per_round_attack_increase} every battle round (still subject to "Attack Damage Multiplier" stat) ', 'Damage resets to normal at the end of every battle') 
     recipe = (Platinum_Elixir, 4), (Iron, 5) 
     
     def __init__(self, client, channel, owner): 
@@ -1093,7 +1101,7 @@ class Flaming_Platinum_Sword(Weapon):
         await Weapon.on_shutdown(self, report, amount) 
         
         if amount > 0: 
-            attack_decrease = self.elapsed_battle_rounds * self.per_round_attack_increase
+            attack_decrease = self.elapsed_battle_rounds * self.per_round_attack_increase * self.owner.attack_multiplier
             
             self.owner.base_attack -= attack_decrease
             self.owner.current_attack -= attack_decrease
@@ -1102,13 +1110,13 @@ class Flaming_Platinum_Sword(Weapon):
         await Weapon.on_turn_on(self, report, amount) 
         
         if amount > 0: 
-            attack_increase = self.elapsed_battle_rounds * self.per_round_attack_increase
+            attack_increase = self.elapsed_battle_rounds * self.per_round_attack_increase * self.owner.attack_multiplier
             
             self.owner.base_attack += attack_increase
             self.owner.current_attack += attack_increase
     
     async def remove_bonuses(self, report, amount): 
-        attack_decrease = self.elapsed_battle_rounds * self.per_round_attack_increase + self.attack_bonus
+        attack_decrease = (self.elapsed_battle_rounds * self.per_round_attack_increase + self.attack_bonus) * self.owner.attack_multiplier
         
         self.owner.base_attack -= attack_decrease
         self.owner.current_attack -= attack_decrease
@@ -1122,17 +1130,19 @@ class Flaming_Platinum_Sword(Weapon):
     async def on_battle_round_start(self, report, amount): 
         if amount > 0: 
             self.elapsed_battle_rounds += 1
+
+            attack_increase = self.per_round_attack_increase * self.owner.attack_multiplier
             
-            self.owner.base_attack += self.per_round_attack_increase
-            self.owner.current_attack += self.per_round_attack_increase
+            self.owner.base_attack += attack_increase
+            self.owner.current_attack += attack_increase
             
-            report.add(f"{self.owner.name}'s {self.name}'s damage increased by {self.per_round_attack_increase}! ") 
+            report.add(f"{self.owner.name}'s {self.name}'s damage increased by {attack_increase}! ") 
             
             await self.owner.attack_changed(report) 
     
     async def on_battle_end(self, report, amount): 
         if amount > 0: 
-            attack_decrease = self.elapsed_battle_rounds * self.per_round_attack_increase
+            attack_decrease = self.elapsed_battle_rounds * self.per_round_attack_increase * self.owner.attack_multiplier
             
             self.owner.base_attack -= attack_decrease
             self.owner.current_attack -= attack_decrease
@@ -1214,6 +1224,7 @@ class Entity(Events):
     starting_hp = 0
     starting_shield = 0
     starting_attack = 0
+    starting_attack_multiplier = 1
     starting_enemy_attack_multiplier = 1
     starting_miss = 1
     starting_crit = 6
@@ -1227,6 +1238,7 @@ class Entity(Events):
 
     def __init__(self, client, channel, current_level=None): 
         self.hp_multiplier = self.starting_hp_multiplier
+        self.attack_multiplier = self.starting_attack_multiplier
         self.base_hp = self.current_hp = self.max_hp = self.starting_hp * self.hp_multiplier
         '''
         self.current_hp = base_hp
@@ -1237,7 +1249,7 @@ class Entity(Events):
         self.current_shield = base_shield
         self.max_shield = base_shield
         '''
-        self.base_attack = self.current_attack = self.starting_attack
+        self.base_attack = self.current_attack = self.starting_attack * self.attack_multiplier
         # self.current_attack = base_attack
         self.enemy_attack_multiplier = self.starting_enemy_attack_multiplier
         self.miss = self.starting_miss
@@ -1321,8 +1333,10 @@ class Entity(Events):
     @action
     async def on_shutdown(self, report): 
         await self.change_hp_multiplier(None, 1 / self.starting_hp_multiplier, updating=True) 
+        await self.change_attack_multiplier(None, 1 / self.starting_attack_multiplier) 
 
         hp_decrease = self.starting_hp * self.hp_multiplier
+        attack_decrease = self.starting_attack * self.attack_multiplier
 
         self.base_hp -= hp_decrease
         self.current_hp -= hp_decrease
@@ -1330,8 +1344,8 @@ class Entity(Events):
         self.base_shield -= self.starting_shield
         self.current_shield -= self.starting_shield
         self.max_shield -= self.starting_shield
-        self.base_attack -= self.starting_attack
-        self.current_attack -= self.starting_attack
+        self.base_attack -= attack_decrease
+        self.current_attack -= attack_decrease
         self.enemy_attack_multiplier /= self.starting_enemy_attack_multiplier
         self.miss -= self.starting_miss
         self.crit -= self.starting_crit
@@ -1346,8 +1360,10 @@ class Entity(Events):
     @action
     async def on_turn_on(self, report): 
         await self.change_hp_multiplier(None, self.starting_hp_multiplier, updating=True) 
+        await self.change_attack_multiplier(None, self.starting_attack_multiplier) 
 
         hp_increase = self.starting_hp * self.hp_multiplier
+        attack_increase = self.starting_attack * self.attack_multiplier
 
         self.base_hp += hp_increase
         self.current_hp += hp_increase
@@ -1361,8 +1377,8 @@ class Entity(Events):
 
         await self.shield_changed(None) 
 
-        self.base_attack += self.starting_attack
-        self.current_attack += self.starting_attack
+        self.base_attack += attack_increase
+        self.current_attack += attack_increase
         self.enemy_attack_multiplier *= self.starting_enemy_attack_multiplier
         self.miss += self.starting_miss
         self.crit += self.starting_crit
@@ -1388,7 +1404,8 @@ class Entity(Events):
         embed.add_field(name='HP', value=cls.starting_hp) 
         embed.add_field(name='HP Multiplier', value=cls.starting_hp_multiplier) 
         embed.add_field(name='Shield', value=cls.starting_shield)
-        embed.add_field(name='Attack Damage', value=cls.starting_attack)
+        embed.add_field(name='Attack Damage', value=cls.starting_attack) 
+        embed.add_field(name='Attack Multiplier', value=cls.starting_attack_multiplier) 
 
         embed.add_field(name='Enemy Attack Multiplier', value=cls.starting_enemy_attack_multiplier)
 
@@ -1426,7 +1443,8 @@ class Entity(Events):
         embed.add_field(name='HP', value='{} / {}'.format(self.current_hp, self.max_hp)) 
         embed.add_field(name='HP Multiplier', value=self.hp_multiplier) 
         embed.add_field(name='Shield', value='{} / {}'.format(self.current_shield, self.max_shield))
-        embed.add_field(name='Attack Damage', value=self.current_attack)
+        embed.add_field(name='Attack Damage', value=self.current_attack) 
+        embed.add_field(name='Attack Multiplier', value=self.attack_multiplier) 
 
         embed.add_field(name='Enemy Attack Multiplier', value=self.enemy_attack_multiplier)
 
@@ -1485,18 +1503,29 @@ class Entity(Events):
     async def change_hp_multiplier(self, report, change_factor, updating=False): 
         self.hp_multiplier *= change_factor
 
-        if report is not None: 
-            report.add("{}'s HP multiplier was changed by a factor of {}! ".format(self.name, change_factor)) 
-        
         self.base_hp *= change_factor
         self.current_hp *= change_factor
         self.max_hp *= change_factor
 
         if report is not None: 
+            report.add("{}'s HP multiplier was changed by a factor of {}! ".format(self.name, change_factor)) 
             report.add("{}'s HP multiplier is now x{}! ".format(self.name, self.hp_multiplier)) 
         
         if not updating: 
             await self.hp_changed(report) 
+    
+    @action
+    async def change_attack_multiplier(self, report, change_factor): 
+        self.attack_multiplier *= change_factor
+        
+        self.base_attack *= change_factor
+        self.current_attack *= change_factor
+
+        if report is not None: 
+            report.add(f"{self.name}'s attack damage multiplier was changed by a factor of {change_factor}! ") 
+            report.add(f"{self.name}'s attack damage multiplier is now x{self.attack_multiplier}! ") 
+
+            await self.attack_changed(report) 
     
     @action
     async def shield_changed(self, report): 
@@ -1605,23 +1634,17 @@ class Entity(Events):
     @action
     async def on_miss(self, report, target):
         if target.is_a(Player) and 'blubber base' not in self.penetrates and target.blubber_base is not None and target.blubber_base.hp > 0: 
-            report.add("{} missed and hit {}'s Blubber Base instead! ".format(self.name, target.name)) 
+            report.add("{} hit {}'s Blubber Base instead! ".format(self.name, target.name)) 
             
             await self.deal_damage(report, target.blubber_base, self.current_attack, penetrates=self.penetrates, bleeds=self.bleeds) 
-        else:
-            report.add('{} missed! '.format(self.name)) 
     
     @action
     async def on_regular_hit(self, report, target): 
-        report.add('{} got a regular hit! '.format(self.name)) 
-        
         await self.deal_damage(report, target, self.current_attack, penetrates=self.penetrates, bleeds=self.bleeds) 
     
     @action
     async def on_crit(self, report, target): 
         damage = self.current_attack * 2
-
-        report.add('{} got a critical hit! '.format(self.name)) 
         
         await self.deal_damage(report, target, damage, crit=True, penetrates=self.penetrates, bleeds=self.bleeds) 
     
@@ -1635,11 +1658,17 @@ class Entity(Events):
 
             report.add('{} rolled a {}! '.format(self.name, attack_roll))
 
-            if target.anti_missed <= 0 and attack_roll <= miss:
+            if target.anti_missed <= 0 and attack_roll <= miss: 
+                report.add(f'{self.name} missed! ') 
+
                 await self.on_miss(report, target)
             elif target.anti_critted <= 0 and attack_roll >= crit: 
+                report.add(f'{self.name} got a critical hit! ') 
+
                 await self.on_crit(report, target) 
             else: 
+                report.add(f'{self.name} got a regular hit! ') 
+
                 await self.on_regular_hit(report, target) 
 
     # receiver is an object representing the receiver of the items, items is a dict of items to donate, with key-value pairs of item (an Item object): amount
@@ -2870,7 +2899,7 @@ class Berserker(Player):
             if report is not None: 
                 report.add('{} can use Berserker Mode again! '.format(self.name)) 
 
-        self.current_attack = (self.max_hp - self.current_hp) * self.scaling_factor + self.base_attack
+        self.current_attack = (self.max_hp - self.current_hp) * self.scaling_factor * self.attack_multiplier + self.base_attack
 
         if report is not None: 
             await self.attack_changed(report) 
@@ -3227,7 +3256,7 @@ class C_Piranha(Piranha, Creature):
     starting_drops = ([Meat, 1],) 
     
     def __init__(self, client, channel, enemy, current_level=None):
-        self.elapsed_battle_turns = 0
+        self.elapsed_battle_rounds = 0
 
         Creature.__init__(self, client, channel, enemy, current_level=current_level) 
     
@@ -3235,24 +3264,30 @@ class C_Piranha(Piranha, Creature):
     async def on_shutdown(self, report): 
         await Creature.on_shutdown(self, report) 
 
-        self.base_attack -= self.elapsed_battle_turns * self.per_round_attack_increase
-        self.current_attack -= self.elapsed_battle_turns * self.per_round_attack_increase
+        attack_decrease = self.elapsed_battle_rounds * self.per_round_attack_increase * self.attack_multiplier
+
+        self.base_attack -= attack_decrease
+        self.current_attack -= attack_decrease
     
     @action
     async def on_turn_on(self, report): 
         await Creature.on_turn_on(self, report) 
 
-        self.base_attack += self.elapsed_battle_turns * self.per_round_attack_increase
-        self.current_attack += self.elapsed_battle_turns * self.per_round_attack_increase
+        attack_increase = self.elapsed_battle_rounds * self.per_round_attack_increase * self.attack_multiplier
+
+        self.base_attack += attack_increase
+        self.current_attack += attack_increase
     
     @action
     async def on_battle_round_start(self, report):
-        self.elapsed_battle_turns += 1
+        self.elapsed_battle_rounds += 1
 
-        self.base_attack += self.per_round_attack_increase
-        self.current_attack += self.per_round_attack_increase
+        attack_increase = self.per_round_attack_increase * self.attack_multiplier
 
-        report.add("{}'s base and current attack increased by {}! ".format(self.name, self.per_round_attack_increase)) 
+        self.base_attack += attack_increase
+        self.current_attack += attack_increase
+
+        report.add("{}'s base and current attack increased by {}! ".format(self.name, attack_increase)) 
 
         await self.attack_changed(report) 
 
@@ -3506,7 +3541,7 @@ class C_Barracuda(Barracuda, Creature):
                                                                                                           'battle round'.format(per_round_attack_increase)) 
 
     def __init__(self, client, channel, enemy, current_level=None):
-        self.elapsed_battle_turns = 0
+        self.elapsed_battle_rounds = 0
 
         Creature.__init__(self, client, channel, enemy, current_level=current_level) 
     
@@ -3514,20 +3549,22 @@ class C_Barracuda(Barracuda, Creature):
     async def on_shutdown(self, report): 
         await Creature.on_shutdown(self, report) 
 
-        hp_decrease = self.elapsed_battle_turns * self.per_round_hp_increase * self.hp_multiplier
+        hp_decrease = self.elapsed_battle_rounds * self.per_round_hp_increase * self.hp_multiplier
 
         self.base_hp -= hp_decrease
         self.current_hp -= hp_decrease
         self.max_hp -= hp_decrease
 
-        self.base_attack -= self.elapsed_battle_turns * self.per_round_attack_increase
-        self.current_attack -= self.elapsed_battle_turns * self.per_round_attack_increase
+        attack_decrease = self.elapsed_battle_rounds * self.per_round_attack_increase * self.attack_multiplier
+
+        self.base_attack -= attack_decrease
+        self.current_attack -= attack_decrease
     
     @action
     async def on_turn_on(self, report): 
         await Creature.on_turn_on(self, report) 
 
-        hp_increase = self.elapsed_battle_turns * self.per_round_hp_increase * self.hp_multiplier
+        hp_increase = self.elapsed_battle_rounds * self.per_round_hp_increase * self.hp_multiplier
 
         self.base_hp += hp_increase
         self.current_hp += hp_increase
@@ -3535,12 +3572,14 @@ class C_Barracuda(Barracuda, Creature):
 
         await self.hp_changed(None) 
 
-        self.base_attack += self.elapsed_battle_turns * self.per_round_attack_increase
-        self.current_attack += self.elapsed_battle_turns * self.per_round_attack_increase
+        attack_increase = self.elapsed_battle_rounds * self.per_round_attack_increase * self.attack_multiplier
+
+        self.base_attack += attack_increase
+        self.current_attack += attack_increase
     
     @action
     async def on_battle_round_start(self, report):
-        self.elapsed_battle_turns += 1
+        self.elapsed_battle_rounds += 1
 
         hp_increase = self.per_round_hp_increase * self.hp_multiplier
 
@@ -3552,10 +3591,12 @@ class C_Barracuda(Barracuda, Creature):
 
         await self.hp_changed(report) 
 
-        self.base_attack += self.per_round_attack_increase
-        self.current_attack += self.per_round_attack_increase
+        attack_increase = self.per_round_attack_increase * self.attack_multiplier
 
-        report.add("{}'s base and current attack increased by {}! ".format(self.name, self.per_round_attack_increase)) 
+        self.base_attack += attack_increase
+        self.current_attack += attack_increase
+
+        report.add("{}'s base and current attack increased by {}! ".format(self.name, attack_increase)) 
 
         await self.attack_changed(report) 
 
