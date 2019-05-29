@@ -3043,6 +3043,67 @@ def calculate_level_multipliers(self):
   return level
 ''' 
 
+class Cryomancer(Player): 
+    fb_threshold = 0.5
+    fb_eam = 0.7
+    fb_attack_multiplier = 1.1
+    
+    name = 'Cryomancer' 
+    description = 'Brrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr' 
+    specials = (f'When {name} is below {fb_threshole * 100}% HP, damage taken from enemy attacks is reduced to {fb_eam * 100}%, \
+and its own damage is increased to {fb_attack_multiplier * 100}%. This effect disappears when {name} goes above {fb_threshold * 100}. ',) 
+    starting_hp = 110
+    starting_attack = 40
+    
+    def __init__(self, client, channel, game, member_id=None): 
+        self.fb_activated = False
+        
+        Player.__init__(self, client, channel, game, member_id=member_id) 
+    
+    @action
+    async def on_shutdown(self, report): 
+        if self.fb_activated: 
+            self.enemy_attack_multiplier /= self.fb_eam
+            
+            await self.change_attack_multiplier(None, 1 / self.fb_attack_multiplier) 
+        
+        await Player.on_shutdown(self, report) 
+    
+    @action
+    async def on_turn_on(self, report): 
+        if self.fb_activated: 
+            self.enemy_attack_multiplier *= self.fb_eam
+            
+            await self.change_attack_multiplier(None, self.fb_attack_multiplier) 
+        
+        await Player.on_turn_on(self, report) 
+    
+    @action
+    async def hp_changed(self, report): 
+        await Player.hp_changed(self, report) 
+        
+        if self.current_hp / self.max_hp <= self.fb_threshold: 
+            if not self.fb_activated: 
+                self.fb_activated = True
+                
+                report.add(f"{self.name}'s Frostbite ability is now active! ") 
+                
+                self.enemy_attack_multiplier *= self.fb_eam
+
+                report.add(f'{self.name} now takes {(self.fb_eam - 1) * 100:+} damage from enemy attacks! ') 
+
+                await self.change_attack_multiplier(report, self.fb_attack_multiplier) 
+        elif self.fb_activated: 
+            self.fb_activated = False
+            
+            report.add(f"{self.name}'s Frostbite ability is no longer active. ") 
+            
+            self.enemy_attack_multiplier /= self.fb_eam
+            
+            report.add(f'{self.name} no longer takes {(self.fb_eam - 1) * 100:+} damage from enemy attacks. ') 
+            
+            await self.change_attack_multiplier(report, 1 / self.fb_attack_multiplier) 
+
 creatures = [] 
 
 class Creature_Meta(ttd_tools.GO_Meta): 
