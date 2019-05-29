@@ -3051,7 +3051,8 @@ class Cryomancer(Player):
     name = 'Cryomancer' 
     description = 'Brrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr' 
     specials = (f'When {name} is below {fb_threshold * 100}% HP, damage taken from enemy attacks is reduced to {fb_eam * 100}%, \
-and its own damage is increased to {fb_attack_multiplier * 100}%. This effect disappears when {name} goes above {fb_threshold * 100}. ',) 
+and its own damage is increased to {fb_attack_multiplier * 100}%. This effect disappears when {name} goes above {fb_threshold * 100}% \
+HP. ',) 
     starting_hp = 110
     starting_attack = 40
     
@@ -3077,6 +3078,13 @@ and its own damage is increased to {fb_attack_multiplier * 100}%. This effect di
             await self.change_attack_multiplier(None, self.fb_attack_multiplier) 
         
         await Player.on_turn_on(self, report) 
+    
+    def stats_embed(self): 
+        embed = Player.stats_embed(self) 
+
+        embed.add_field(name='Frostbite activated', value=self.fb_activated) 
+
+        return embed
     
     @action
     async def hp_changed(self, report): 
