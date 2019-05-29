@@ -3098,7 +3098,7 @@ goes above {fb_threshold * 100}% HP. ',)
                 
                 self.enemy_attack_multiplier *= self.fb_eam
 
-                report.add(f'{self.name} now takes {(self.fb_eam - 1) * 100:+} damage from enemy attacks! ') 
+                report.add(f'{self.name} now takes {(self.fb_eam - 1) * 100:+}% damage from enemy attacks! ') 
 
                 await self.change_attack_multiplier(report, self.fb_attack_multiplier) 
         elif self.fb_activated: 
@@ -3108,7 +3108,7 @@ goes above {fb_threshold * 100}% HP. ',)
             
             self.enemy_attack_multiplier /= self.fb_eam
             
-            report.add(f'{self.name} no longer takes {(self.fb_eam - 1) * 100:+} damage from enemy attacks. ') 
+            report.add(f'{self.name} no longer takes {(self.fb_eam - 1) * 100:+}% damage from enemy attacks. ') 
             
             await self.change_attack_multiplier(report, 1 / self.fb_attack_multiplier) 
 
