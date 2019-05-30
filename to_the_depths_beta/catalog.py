@@ -3094,21 +3094,20 @@ goes above {fb_threshold:.0%} HP. ',)
             if not self.fb_activated: 
                 self.fb_activated = True
                 
-                report.add(f"{self.name}'s Frostbite ability is now active! ") 
-                
                 self.enemy_attack_multiplier *= self.fb_eam
 
-                report.add(f'{self.name} now takes {self.fb_eam - 1:+.0%} damage from enemy attacks! ') 
+                if report is not None: 
+                    report.add(f"{self.name}'s Frostbite ability is now active! ") 
+                    report.add(f'{self.name} now takes {self.fb_eam - 1:+.0%} damage from enemy attacks! ') 
 
                 await self.change_attack_multiplier(report, self.fb_attack_multiplier) 
         elif self.fb_activated: 
             self.fb_activated = False
-            
-            report.add(f"{self.name}'s Frostbite ability is no longer active. ") 
-            
             self.enemy_attack_multiplier /= self.fb_eam
             
-            report.add(f'{self.name} no longer takes {self.fb_eam - 1:+.0%} damage from enemy attacks. ') 
+            if report is not None: 
+                report.add(f"{self.name}'s Frostbite ability is no longer active. ") 
+                report.add(f'{self.name} no longer takes {self.fb_eam - 1:+.0%} damage from enemy attacks. ') 
             
             await self.change_attack_multiplier(report, 1 / self.fb_attack_multiplier) 
 
