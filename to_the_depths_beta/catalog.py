@@ -1332,8 +1332,8 @@ class Entity(Events):
     
     @action
     async def on_shutdown(self, report): 
-        await self.change_hp_multiplier(None, 1 / self.starting_hp_multiplier, updating=True) 
-        await self.change_attack_multiplier(None, 1 / self.starting_attack_multiplier) 
+        await self.change_hp_multiplier(None, 1, self.starting_hp_multiplier, updating=True) 
+        await self.change_attack_multiplier(None, 1, self.starting_attack_multiplier) 
 
         hp_decrease = self.starting_hp * self.hp_multiplier
         attack_decrease = self.starting_attack * self.attack_multiplier
@@ -1500,29 +1500,29 @@ class Entity(Events):
             report.add('{} has {}/{} HP now! '.format(self.name, self.current_hp, self.max_hp)) 
     
     @action
-    async def change_hp_multiplier(self, report, change_factor, updating=False): 
-        self.hp_multiplier *= change_factor
+    async def change_hp_multiplier(self, report, num, denom=1, updating=False): 
+        self.hp_multiplier = self.hp_multiplier * num / denom
 
-        self.base_hp *= change_factor
-        self.current_hp *= change_factor
-        self.max_hp *= change_factor
+        self.base_hp = self.base_hp * num / denom
+        self.current_hp = self.current_hp * num / denom
+        self.max_hp = self.max_hp * num / denom
 
         if report is not None: 
-            report.add("{}'s HP multiplier was changed by a factor of {}! ".format(self.name, change_factor)) 
+            #report.add("{}'s HP multiplier was changed by a factor of {}! ".format(self.name, change_factor)) 
             report.add("{}'s HP multiplier is now x{}! ".format(self.name, self.hp_multiplier)) 
         
         if not updating: 
             await self.hp_changed(report) 
     
     @action
-    async def change_attack_multiplier(self, report, change_factor): 
-        self.attack_multiplier *= change_factor
+    async def change_attack_multiplier(self, report, num, denom=1): 
+        self.attack_multiplier = self.attack_multiplier * num / denom
         
-        self.base_attack *= change_factor
-        self.current_attack *= change_factor
+        self.base_attack = self.base_attack * num / denom
+        self.current_attack = self.current_attack * num / denom
 
         if report is not None: 
-            report.add(f"{self.name}'s attack damage multiplier was changed by a factor of {change_factor}! ") 
+            #report.add(f"{self.name}'s attack damage multiplier was changed by a factor of {change_factor}! ") 
             report.add(f"{self.name}'s attack damage multiplier is now x{self.attack_multiplier}! ") 
 
             await self.attack_changed(report) 
@@ -3066,7 +3066,7 @@ goes above {fb_threshold:.0%} HP. ',)
         if self.fb_activated: 
             self.enemy_attack_multiplier /= self.fb_eam
             
-            await self.change_attack_multiplier(None, 1 / self.fb_attack_multiplier) 
+            await self.change_attack_multiplier(None, 1, self.fb_attack_multiplier) 
         
         await Player.on_shutdown(self, report) 
     
@@ -3109,7 +3109,7 @@ goes above {fb_threshold:.0%} HP. ',)
                 report.add(f"{self.name}'s Frostbite ability is no longer active. ") 
                 report.add(f'{self.name} no longer takes {self.fb_eam - 1:+.0%} damage from enemy attacks. ') 
             
-            await self.change_attack_multiplier(report, 1 / self.fb_attack_multiplier) 
+            await self.change_attack_multiplier(report, 1, self.fb_attack_multiplier) 
 
 creatures = [] 
 
