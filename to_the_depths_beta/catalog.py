@@ -3046,7 +3046,7 @@ def calculate_level_multipliers(self):
 class Cryomancer(Player): 
     fb_threshold = 0.5
     fb_eam = 0.7
-    fb_attack_multiplier = 1.1
+    fb_attack_multiplier = 1.3
     
     name = 'Cryomancer' 
     description = 'Brrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr' 
@@ -3054,7 +3054,7 @@ class Cryomancer(Player):
 {1 - fb_eam:.0%}, and its own damage is increased by {fb_attack_multiplier - 1:.0%}. This effect disappears when {name} \
 goes above {fb_threshold:.0%} HP. ',) 
     starting_hp = 110
-    starting_attack = 40
+    starting_attack = 30
     
     def __init__(self, client, channel, game, member_id=None): 
         self.fb_activated = False
