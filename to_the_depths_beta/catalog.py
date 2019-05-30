@@ -3050,7 +3050,7 @@ class Cryomancer(Player):
     
     name = 'Cryomancer' 
     description = 'Brrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr' 
-    specials = (f'Frostbite - when {name} is below {fb_threshold:.0%} HP, damage taken from enemy attacks is reduced by \
+    specials = (f'Frostbite - when {name} is at or below {fb_threshold:.0%} HP, damage taken from enemy attacks is reduced by \
 {1 - fb_eam:.0%}, and its own damage is increased by {fb_attack_multiplier - 1:.0%}. This effect disappears when {name} \
 goes above {fb_threshold:.0%} HP. ',) 
     starting_hp = 110
