@@ -1216,6 +1216,7 @@ class Classical_Freeze_Gun(Weapon):
 # noinspection PyTypeChecker
 class Entity(Events): 
     pd_slope = 20
+    per_round_burn_percent = 0.05
     
     name = ''
     description = '' 
@@ -1266,6 +1267,7 @@ class Entity(Events):
         self.bleeds = list(self.starting_bleeds)
         # self.death_restore = copy.deepcopy(self)
         self.current_level = current_level
+        self.burn_rounds = 0
 
         self.current_actions = 0
         self.dead = False
@@ -1461,7 +1463,9 @@ class Entity(Events):
         access_levels_string = format_iterable((level.name for level in self.access_levels))
 
         embed.add_field(name='Current Location', value=self.current_level.name)
-        embed.add_field(name='Can safely access', value=access_levels_string if len(access_levels_string) > 0 else 'No levels')
+        embed.add_field(name='Can safely access', value=access_levels_string if len(access_levels_string) > 0 else 'No levels') 
+        
+        embed.add_field(name='Rounds of burn damage remaining', value=self.burn_rounds) 
 
         penetrates_string = format_iterable(self.penetrates)
         bleeds_string = format_iterable(self.bleeds) 
@@ -1721,6 +1725,30 @@ class Entity(Events):
             await self.switch_hit(report, target) 
     
     @action
+    async def take_burn_damage(self, report): 
+        damage = self.max_hp * self.per_round_burn_percent
+        
+        report.add(f'{self.name} takes {self.per_round_burn_percent:.0%} of their max HP in fire damage! ') 
+        
+        await self.take_damage(report, damage, penetrates=('shield',)) 
+        
+        self.burn_rounds -= 1
+        
+        report.add(f'{self.name} now has {self.burn_rounds} rounds of fire damage remaining. ') 
+    
+    @action
+    async def check_burn(self, report): 
+        if self.burn_rounds > 0: 
+            await self.take_burn_damage(report) 
+    
+    @action
+    async def get_burned(self, report, burn_rounds): 
+        self.burn_rounds += burn_rounds
+        
+        report.add(f'{self.name} was applied {burn_rounds} rounds of fire damage! ') 
+        report.add(f'{self.name} will now take {self.burn_rounds} rounds of fire damage. ') 
+    
+    @action
     async def on_death(self, report):
         report.add('{} died! '.format(self.name))
 
@@ -1746,6 +1774,7 @@ class Entity(Events):
     @action
     async def on_battle_round_start(self, report): 
         await self.check_pressure(report) 
+        await self.check_burn(report) 
     
     @action
     async def on_move_levels(self, report, move_by): 
