@@ -3159,7 +3159,7 @@ of dealing extra damage',)
         await target.get_burned(report, self.crit_burn_rounds) 
 
 class Shock(Player): 
-    electric_damage_percent = 0.33
+    electric_damage_percent = 1 / 3
     
     name = 'Shock' 
     description = 'Zap' 
