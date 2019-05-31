@@ -3140,6 +3140,20 @@ goes above {fb_threshold:.0%} HP. ',)
             
             await self.change_attack_multiplier(report, 1, self.fb_attack_multiplier) 
 
+class Scorch(Player): 
+    crit_burn_rounds = 2
+    
+    name = 'Scorch' 
+    description = 'PK Fire! ' 
+    specials = (f'Crits apply 2 rounds of fire damage to the victim ({Entity.per_round_burn_percent:.0%} max HP per round) instead \
+of dealing damage',) 
+    starting_attack = 10
+    starting_crit = 4
+    
+    @action
+    async def on_crit(self, report, target): 
+        await target.get_burned(report, self.crit_burn_rounds) 
+
 creatures = [] 
 
 class Creature_Meta(ttd_tools.GO_Meta): 
