@@ -1268,6 +1268,7 @@ class Entity(Events):
         # self.death_restore = copy.deepcopy(self)
         self.current_level = current_level
         self.burn_rounds = 0
+        self.electric_damage = 0
 
         self.current_actions = 0
         self.dead = False
@@ -3155,6 +3156,39 @@ of dealing extra damage',)
         await self.on_regular_hit(report, target) 
         
         await target.get_burned(report, self.crit_burn_rounds) 
+
+class Shock(Player): 
+    electric_damage_percent = 0.2
+    
+    name = 'Shock' 
+    description = 'Zap' 
+    specials = (f'Each regular hit adds {electric_damage_percent:.0%} of {name}\'s attack damage ad "potential damage" to the \
+target. This damage is not immediately dealt. ', f'When {name} crits, it adds {electric_damage_percent:.0%} of its attack \
+damage as "potential damage". Following this, the target\'s shield is instantly broken, all the target\'s stored potential damage \
+is dealt as actual damage, and the target is stunned, allowing {name} to get another free hit! ', f'When {name} misses, it \
+deals the crit effect to itself') 
+    
+    @action
+    async def charge_target(self, report, target): 
+        electric_damage = self.current_attack * self.electric_damage_percent
+        
+        target.electric_damage += electric_damage
+        
+        report.add(f'{target.name} received {electric_damage} potential damage! ') 
+        report.add(f'{target.name} has {target.electric_damage} potential damage now! ') 
+    
+    @action
+    async def release_charge(report, attacker, target): 
+        if target.current_shield > 0: 
+            target.current_shield = 0
+            
+            report.add(f"{target.name}'s shield is instantly broken! ") 
+            
+            await target.shield_changed(report) 
+        
+        report.add(f'{target.name} takes all its built-up potential damage! ') 
+        
+        await target.take_damage(report, target.electric_damage) 
 
 creatures = [] 
 
