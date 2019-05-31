@@ -3162,8 +3162,8 @@ class Shock(Player):
     
     name = 'Shock' 
     description = 'Zap' 
-    specials = (f'Each regular hit adds {electric_damage_percent:.0%} of {name}\'s attack damage ad "potential damage" to the \
-target. This damage is not immediately dealt. ', f'When {name} crits, it adds {electric_damage_percent:.0%} of its attack \
+    specials = (f'Each regular hit adds {electric_damage_percent:.0%} of {name}\'s attack damage add "potential damage" to the \
+target. This damage is not immediately dealt. ', f'{name}\'s crits do no damage by themselves. Instead, critting adds {electric_damage_percent:.0%} of {name}\'s attack \
 damage as "potential damage". Following this, the target\'s shield is instantly broken, all the target\'s stored potential damage \
 is dealt as actual damage, and the target is stunned, allowing {name} to get another free hit! ', f'When {name} misses, it \
 deals the crit effect to itself') 
@@ -3178,7 +3178,7 @@ deals the crit effect to itself')
         report.add(f'{target.name} has {target.electric_damage} potential damage now! ') 
     
     @action
-    async def release_charge(report, attacker, target): 
+    async def release_charge(self, report, target): 
         if target.current_shield > 0: 
             target.current_shield = 0
             
@@ -3189,6 +3189,36 @@ deals the crit effect to itself')
         report.add(f'{target.name} takes all its built-up potential damage! ') 
         
         await target.take_damage(report, target.electric_damage) 
+        
+        target.electric_damage = 0
+    
+    @action
+    async def on_miss(self, report, target): 
+        report.add(f'{self.name} crits itself! ') 
+        
+        await self.charge_target(report, self) 
+        
+        await self.release_charge(report, self) 
+        
+        report.add(f'{self.name} is stunned, and {target.name} gets a free hit on them! ') 
+        
+        await target.switch_hit(report, self) 
+    
+    @action
+    async def on_regular_hit(self, report, target): 
+        await Player.on_regular_hit(self, report, target) 
+        
+        await self.charge_target(report, target) 
+    
+    @action
+    async def on_crit(self, report, target): 
+        await self.charge_target(report, target) 
+        
+        await self.release_charge(report, target) 
+        
+        report.add(f'{target.name} is stunned, and {self.name} gets a free hit on them! ') 
+        
+        await self.switch_hit(report, target) 
 
 creatures = [] 
 
