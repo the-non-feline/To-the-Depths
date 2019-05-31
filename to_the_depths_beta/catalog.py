@@ -3146,7 +3146,7 @@ class Scorch(Player):
     name = 'Scorch' 
     description = 'PK Fire! ' 
     specials = (f'Crits apply 2 rounds of fire damage to the victim ({Entity.per_round_burn_percent:.0%} max HP per round) instead \
-of dealing damage',) 
+of dealing extra damage',) 
     starting_attack = 20
     starting_crit = 5
     
