@@ -3146,7 +3146,7 @@ class Scorch(Player):
     crit_burn_rounds = 2
     
     name = 'Scorch' 
-    description = 'PK Fire! ' 
+    description = 'Fiery' 
     specials = (f'Crits apply 2 rounds of fire damage to the victim ({Entity.per_round_burn_percent:.0%} max HP per round) instead \
 of dealing extra damage',) 
     starting_attack = 20
@@ -3159,7 +3159,7 @@ of dealing extra damage',)
         await target.get_burned(report, self.crit_burn_rounds) 
 
 class Shock(Player): 
-    electric_damage_percent = 0.2
+    electric_damage_percent = 0.33
     
     name = 'Shock' 
     description = 'Zap' 
@@ -3170,7 +3170,6 @@ is dealt as actual damage, and the target is stunned, allowing {name} to get ano
 deals the crit effect to itself') 
     starting_hp = 110
     starting_attack = 30
-    starting_crit = 5
     
     @action
     async def charge_target(self, report, target): 
