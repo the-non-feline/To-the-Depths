@@ -3147,11 +3147,13 @@ class Scorch(Player):
     description = 'PK Fire! ' 
     specials = (f'Crits apply 2 rounds of fire damage to the victim ({Entity.per_round_burn_percent:.0%} max HP per round) instead \
 of dealing damage',) 
-    starting_attack = 10
-    starting_crit = 4
+    starting_attack = 20
+    starting_crit = 5
     
     @action
     async def on_crit(self, report, target): 
+        await self.on_regular_hit(report, target) 
+        
         await target.get_burned(report, self.crit_burn_rounds) 
 
 creatures = [] 
