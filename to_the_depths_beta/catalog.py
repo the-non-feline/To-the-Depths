@@ -1467,6 +1467,7 @@ class Entity(Events):
         embed.add_field(name='Can safely access', value=access_levels_string if len(access_levels_string) > 0 else 'No levels') 
         
         embed.add_field(name='Rounds of burn damage remaining', value=self.burn_rounds) 
+        embed.add_field(name='Attached electric potential damage', value=self.electric_damage) 
 
         penetrates_string = format_iterable(self.penetrates)
         bleeds_string = format_iterable(self.bleeds) 
@@ -3167,6 +3168,9 @@ target. This damage is not immediately dealt. ', f'{name}\'s crits do no damage 
 damage as "potential damage". Following this, the target\'s shield is instantly broken, all the target\'s stored potential damage \
 is dealt as actual damage, and the target is stunned, allowing {name} to get another free hit! ', f'When {name} misses, it \
 deals the crit effect to itself') 
+    starting_hp = 110
+    starting_attack = 30
+    starting_crit = 5
     
     @action
     async def charge_target(self, report, target): 
