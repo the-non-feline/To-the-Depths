@@ -2448,7 +2448,7 @@ class Player(Commander, metaclass=Player_Meta, append=False):
             else:
                 more_first = self.enemy
                 
-                report.add('{} got first hit due to winning the coin flip! '.format(more_first.name)) 
+            report.add('{} got first hit due to winning the coin flip! '.format(more_first.name)) 
         else:
             more_first = max(self, self.enemy, key=lambda side: side.priority) 
             
