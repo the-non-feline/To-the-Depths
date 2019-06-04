@@ -3204,7 +3204,7 @@ target. Likewise, the enemy can't miss when hitting a stunned {name}. ")
                     self.entity.crit -= self.entity.stunning_crit_bonus
 
                     self.report.add(f"{self.entity.name}'s crit chance temporarily increases by \
-    {self.entity.stunning_crit_bonus}! ") 
+{self.entity.stunning_crit_bonus}! ") 
 
                 self.entity.stunning_level += 1
 
