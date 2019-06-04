@@ -1267,6 +1267,8 @@ class Entity(Events):
         self.bleeds = list(self.starting_bleeds)
         # self.death_restore = copy.deepcopy(self)
         self.current_level = current_level
+
+        self.stun_level = 0
         self.burn_rounds = 0
         self.electric_damage = 0
 
@@ -1310,6 +1312,18 @@ class Entity(Events):
                         await self.entity.die(self.report) 
         
         return Acting() 
+    
+    def stunned(self): 
+        class Stunned: 
+            entity = self
+
+            def __enter__(self): 
+                self.entity.stun_level += 1
+            
+            def __exit__(self, typ, value, traceback): 
+                self.entity.stun_level -= 1
+        
+        return Stunned() 
 
     # noinspection PyUnreachableCode
     def final_miss(self, enemy):
@@ -1664,7 +1678,8 @@ class Entity(Events):
 
             report.add('{} rolled a {}! '.format(self.name, attack_roll))
 
-            if target.anti_missed <= 0 and attack_roll <= miss: 
+            #can't miss if target is stunned
+            if target.anti_missed <= 0 and target.stun_level == 0 and attack_roll <= miss: 
                 report.add(f'{self.name} missed! ') 
 
                 await self.on_miss(report, target)
@@ -3160,16 +3175,48 @@ of dealing extra damage',)
 
 class Shock(Player): 
     electric_damage_percent = 0.3
+    stunning_crit_bonus = 1
     
     name = 'Shock' 
     description = 'Zap' 
     specials = (f'Each regular hit adds {electric_damage_percent:.0%} of {name}\'s attack damage add "potential damage" to the \
 target. This damage is not immediately dealt. ', f'{name}\'s crits do no damage by themselves. Instead, critting adds {electric_damage_percent:.0%} of {name}\'s attack \
 damage as "potential damage". Following this, the target\'s shield is instantly broken, all the target\'s stored potential damage \
-is dealt as actual damage, and the target is stunned, allowing {name} to get another free hit! ', f'When {name} misses, it \
-deals the crit effect to itself') 
+is dealt as actual damage, and the target is stunned, allowing {name} to get another free hit! ', f"When stunning, \
+{name}'s crit chance temporarily increases by {stunning_crit_bonus}. ", 
+f'When {name} misses, it deals the crit effect to itself. ', f"{name} can't miss when hitting a stunned \
+target. Likewise, the enemy can't miss when hitting a stunned {name}. ") 
     starting_hp = 110
     starting_attack = 30
+
+    def __init__(self, client, channel, game, member_id=None): 
+        self.stunning_level = 0
+
+        Player.__init__(self, client, channel, game, member_id=member_id) 
+    
+    def stunning(self, _report): 
+        class Stunning: 
+            entity = self
+            report = _report
+
+            async def __aenter__(self): 
+                if self.entity.stunning_level == 0: 
+                    self.entity.crit -= self.entity.stunning_crit_bonus
+
+                    self.report.add(f"{self.entity.name}'s crit chance temporarily increases by \
+    {self.entity.stunning_crit_bonus}! ") 
+
+                self.entity.stunning_level += 1
+
+            async def __aexit__(self, typ, value, traceback): 
+                self.entity.stunning_level -= 1
+
+                if self.entity.stunning_level == 0: 
+                    self.entity.crit += self.entity.stunning_crit_bonus
+
+                    self.report.add(f"{self.entity.name}'s crit chance reset to normal. ") 
+        
+        return Stunning() 
     
     @action
     async def charge_target(self, report, target): 
@@ -3195,17 +3242,29 @@ deals the crit effect to itself')
         
         target.electric_damage = 0
     
+    @staticmethod
+    async def stun_target(report, stunner, stunned): 
+        with stunned.stunned(): 
+            report.add(f'{stunned.name} is stunned, and {stunner.name} gets a free hit on them! ') 
+
+            await stunner.switch_hit(report, stunned)
+    
     @action
     async def on_miss(self, report, target): 
-        report.add(f'{self.name} crits itself! ') 
+        report.add(f'{self.name} crits themselves! ') 
         
         await self.charge_target(report, self) 
         
         await self.release_charge(report, self) 
+
+        await self.stun_target(report, target, self) 
         
-        report.add(f'{self.name} is stunned, and {target.name} gets a free hit on them! ') 
-        
-        await target.switch_hit(report, self) 
+        '''
+        with self.stunned(): 
+            report.add(f'{self.name} is stunned, and {target.name} gets a free hit on them! ') 
+
+            await target.switch_hit(report, self) 
+        ''' 
     
     @action
     async def on_regular_hit(self, report, target): 
@@ -3218,10 +3277,16 @@ deals the crit effect to itself')
         await self.charge_target(report, target) 
         
         await self.release_charge(report, target) 
+
+        async with self.stunning(report): 
+            await self.stun_target(report, self, target) 
         
-        report.add(f'{target.name} is stunned, and {self.name} gets a free hit on them! ') 
-        
-        await self.switch_hit(report, target) 
+        '''
+        with target.stunned(): 
+            report.add(f'{target.name} is stunned, and {self.name} gets a free hit on them! ') 
+            
+            await self.switch_hit(report, target) 
+        ''' 
 
 creatures = [] 
 
@@ -3908,26 +3973,27 @@ class C_Moray_Eel(Moray_Eel, Creature):
 class Electric_Eel(Entity): 
     name = 'Electric Eel' 
     description = '**Shock**ingly strong' 
-    specials = ('When it attacks, a coin flip is used to determine if it stuns its target. If it successfully gets the stun, it gets to hit again! ',) 
+    specials = (f'When {name} attacks, a coin flip is used to determine if it stuns its target. If it successfully gets the stun, it gets to hit again! ', 
+    f'{name} is unable to miss while attacking a stunned target')  
     starting_hp = 50
     starting_attack = 20
     starting_access_levels = (Levels.Middle,) 
 
     @action
     async def switch_hit(self, report, target): 
-        stunned = True
+        await Entity.switch_hit(self, report, target) 
 
-        while stunned: 
-            await Entity.switch_hit(self, report, target) 
+        report.add('{} attempts to stun {}! '.format(self.name, target.name)) 
 
-            report.add('{} attempts to stun {}! '.format(self.name, target.name)) 
+        stunned = not await target.call_and_flip(report) 
 
-            stunned = not await target.call_and_flip(report) 
+        if stunned: 
+            with target.stunned(): 
+                report.add('{} is stunned! {} gets to hit again! '.format(target.name, self.name)) 
 
-            if stunned: 
-                report.add('{} is stunned! {} gets to attack again! '.format(target.name, self.name)) 
-            else: 
-                report.add('{} failed to stun {}. '.format(self.name, target.name)) 
+                await self.switch_hit(report, target) 
+        else: 
+            report.add('{} failed to stun {}. '.format(self.name, target.name)) 
 
 class C_Electric_Eel(Electric_Eel, Creature): 
     starting_drops = ((Watt, 5),) 
