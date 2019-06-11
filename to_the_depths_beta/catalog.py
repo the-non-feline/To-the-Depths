@@ -3169,8 +3169,8 @@ of dealing extra damage',)
     
     @action
     async def on_crit(self, report, target): 
-        await self.on_regular_hit(report, target) 
-        
+        await self.deal_damage(report, target, self.current_attack, crit=True, penetrates=self.penetrates, bleeds=self.bleeds) 
+
         await target.get_burned(report, self.crit_burn_rounds) 
 
 class Shock(Player): 
