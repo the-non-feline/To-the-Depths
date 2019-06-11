@@ -1216,7 +1216,7 @@ class Classical_Freeze_Gun(Weapon):
 # noinspection PyTypeChecker
 class Entity(Events): 
     pd_slope = 20
-    per_round_burn_percent = 0.05
+    per_round_fire_percent = 0.5
     
     name = ''
     description = '' 
@@ -1269,7 +1269,7 @@ class Entity(Events):
         self.current_level = current_level
 
         self.stun_level = 0
-        self.burn_rounds = 0
+        self.fire_damage = 0
         self.electric_damage = 0
 
         self.current_actions = 0
@@ -1480,7 +1480,7 @@ class Entity(Events):
         embed.add_field(name='Current Location', value=self.current_level.name)
         embed.add_field(name='Can safely access', value=access_levels_string if len(access_levels_string) > 0 else 'No levels') 
         
-        embed.add_field(name='Rounds of burn damage remaining', value=self.burn_rounds) 
+        embed.add_field(name='Attached fire damage', value=self.fire_damage) 
         embed.add_field(name='Attached electric potential damage', value=self.electric_damage) 
 
         penetrates_string = format_iterable(self.penetrates)
@@ -1742,28 +1742,29 @@ class Entity(Events):
             await self.switch_hit(report, target) 
     
     @action
-    async def take_burn_damage(self, report): 
-        damage = self.max_hp * self.per_round_burn_percent
+    async def take_fire_damage(self, report): 
+        ceiled_damage = self.fire_damage * self.per_round_fire_percent
+        fire_damage = min(ceiled_damage, self.fire_damage) 
         
-        report.add(f'{self.name} takes {self.per_round_burn_percent:.0%} of their max HP in fire damage! ') 
+        report.add(f'{self.name} takes {self.per_round_fire_percent:.0%} of their built-up fire damage! ') 
         
-        await self.take_damage(report, damage, penetrates=('shield',)) 
+        await self.take_damage(report, fire_damage, penetrates=('shield',)) 
         
-        self.burn_rounds -= 1
+        self.fire_damage -= fire_damage
         
-        report.add(f'{self.name} now has {self.burn_rounds} rounds of fire damage remaining. ') 
+        report.add(f'{self.name} now has {self.fire_damage} fire damage remaining. ') 
     
     @action
-    async def check_burn(self, report): 
-        if self.burn_rounds > 0: 
-            await self.take_burn_damage(report) 
+    async def check_fire(self, report): 
+        if self.fire_damage > 0: 
+            await self.take_fire_damage(report) 
     
     @action
-    async def get_burned(self, report, burn_rounds): 
-        self.burn_rounds += burn_rounds
+    async def get_burned(self, report, fire_damage): 
+        self.fire_damage += fire_damage
         
-        report.add(f'{self.name} was applied {burn_rounds} rounds of fire damage! ') 
-        report.add(f'{self.name} will now take {self.burn_rounds} rounds of fire damage. ') 
+        report.add(f'{self.name} was applied {fire_damage} fire damage! ') 
+        report.add(f'{self.name} now has {self.fire_damage} fire damage. ') 
     
     @action
     async def on_death(self, report):
@@ -1791,7 +1792,7 @@ class Entity(Events):
     @action
     async def on_battle_round_start(self, report): 
         await self.check_pressure(report) 
-        await self.check_burn(report) 
+        await self.check_fire(report) 
     
     @action
     async def on_move_levels(self, report, move_by): 
@@ -3158,12 +3159,13 @@ goes above {fb_threshold:.0%} HP. ',)
             await self.change_attack_multiplier(report, 1, self.fb_attack_multiplier) 
 
 class Scorch(Player): 
-    crit_burn_rounds = 2
+    crit_fire_percent = 1
     
     name = 'Scorch' 
     description = 'Fiery' 
-    specials = (f'Crits apply 2 rounds of fire damage to the victim ({Entity.per_round_burn_percent:.0%} max HP per round) instead \
-of dealing extra damage',) 
+    specials = (f"Crits apply {crit_fire_percent:.0%} of {name}'s attack damage as fire damage to the victim instead \
+of dealing extra damage", f'Entities with fire damage take {Entity.per_round_fire_percent:.0%} of it \
+(rounded up) as actual damage each battle round')  
     starting_attack = 20
     starting_crit = 5
     
@@ -3171,7 +3173,10 @@ of dealing extra damage',)
     async def on_crit(self, report, target): 
         await self.deal_damage(report, target, self.current_attack, crit=True, penetrates=self.penetrates, bleeds=self.bleeds) 
 
-        await target.get_burned(report, self.crit_burn_rounds) 
+        fire_damage = self.current_attack * self.crit_fire_percent
+
+        report.add(f'{self.name} adds {self.crit_fire_percent:.0%} of its attack damage as fire damage to {target.name}! ') 
+        await target.get_burned(report, fire_damage) 
 
 class Shock(Player): 
     electric_damage_percent = 0.3
