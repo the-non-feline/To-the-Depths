@@ -1743,7 +1743,7 @@ class Entity(Events):
     
     @action
     async def take_fire_damage(self, report): 
-        ceiled_damage = self.fire_damage * self.per_round_fire_percent
+        ceiled_damage = math.ceil(self.fire_damage * self.per_round_fire_percent)
         fire_damage = min(ceiled_damage, self.fire_damage) 
         
         report.add(f'{self.name} takes {self.per_round_fire_percent:.0%} of their built-up fire damage! ') 
