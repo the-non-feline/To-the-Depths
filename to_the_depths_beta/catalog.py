@@ -1703,7 +1703,7 @@ class Entity(Events):
             
             if defender.is_a(Player):
                 # if defender is a Player, has a living pet, and the entity does not ignore the pet
-                if 'pet' not in self.penetrates and defender.pet is not None and defender.pet.hp > 0:
+                if 'pet' not in self.penetrates and defender.pet is not None and not defender.pet.dead:
                     # reaction_member = self.channel.guild.get_member(defender.member_id)
                     report.add('{0}, will your pet take the hit? React with {1} for yes and {1} for no. This defaults to {2} if you do not respond after 20 seconds. '.format(defender.name, thumbs_up_emoji, thumbs_down_emoji))
 
@@ -1724,15 +1724,15 @@ class Entity(Events):
                     '''
 
                     # if for some reason the pet still exists and is alive after this prompt
-                    if reaction_emoji == thumbs_up_emoji and defender.pet is not None and defender.pet.hp > 0:
+                    if reaction_emoji == thumbs_up_emoji and defender.pet is not None and not defender.pet.dead:
                         target = defender.pet
-                    elif 'sub' not in self.penetrates and defender.sub is not None and defender.sub.current_hp > 0 and defender.sub.active:
+                    elif 'sub' not in self.penetrates and defender.sub is not None and not defender.sub.dead and defender.sub.active:
                         target = defender.sub
                     else:
                         target = defender
 
                 # if the player is still the target but they have a living sub and self does not ignore subs
-                elif 'sub' not in self.penetrates and defender.sub is not None and defender.sub.current_hp > 0 and defender.sub.active:
+                elif 'sub' not in self.penetrates and defender.sub is not None and not defender.sub.dead and defender.sub.active:
                     target = defender.sub
                 else:
                     target = defender
@@ -1875,12 +1875,13 @@ class Commander(Entity):
     
     @action
     async def end_battle_turn(self, report): 
-        self.battle_turn = False
+        if self.battle_turn: 
+            self.battle_turn = False
 
-        report.add("It's no longer {}'s battle turn. ".format(self.name)) 
-        
-        await self.on_global_event(report, 'battle_round_end') 
-        await self.enemy.on_global_event(report, 'battle_round_end') 
+            report.add("It's no longer {}'s battle turn. ".format(self.name)) 
+            
+            await self.on_global_event(report, 'battle_round_end') 
+            await self.enemy.on_global_event(report, 'battle_round_end') 
     
     @action
     async def leave_battle(self, report): 
@@ -2274,7 +2275,7 @@ class Player(Commander, metaclass=Player_Meta, append=False):
             await self.on_global_event(report, 'battle_round_start') 
             await self.enemy.on_global_event(report, 'battle_round_start') 
 
-            proceed = self.current_hp > 0 and enemy.current_hp > 0
+            proceed = not self.dead and not self.enemy.dead
 
             # noinspection PyRedundantParentheses
             if proceed: 
@@ -2344,7 +2345,7 @@ class Player(Commander, metaclass=Player_Meta, append=False):
 
             await self.check_current_oxygen(report) 
 
-            if self.current_hp > 0: 
+            if not self.dead: 
                 # surprise attack
                 await self.check_surprise_attack(report) 
     
@@ -2428,11 +2429,10 @@ class Player(Commander, metaclass=Player_Meta, append=False):
             else: 
                 report.add('{} failed to flee! {} can now hit them {} times! '.format(self.name, self.enemy.name, self.failed_flee_punishment)) 
 
-                await self.end_battle_turn(report) 
-
                 for time in range(self.failed_flee_punishment): 
-                    await self.enemy.start_battle_turn(report) 
                     await self.enemy.switch_attack(report) 
+            
+                await self.end_battle_turn(report) 
     
     # noinspection PyUnusedLocal,PyUnusedLocal,PyUnusedLocal
     @action
@@ -2504,8 +2504,7 @@ class Player(Commander, metaclass=Player_Meta, append=False):
             async with self.enemy.acting(report): 
                 print(4) 
 
-                if self.battle_turn: 
-                    await self.end_battle_turn(report) 
+                await self.end_battle_turn(report) 
 
                 print(5) 
                 
@@ -2889,7 +2888,7 @@ class Player(Commander, metaclass=Player_Meta, append=False):
             await self.on_global_event(report, 'battle_round_start') 
             await self.enemy.on_global_event(report, 'battle_round_start') 
 
-            if self.current_hp > 0 and self.enemy.current_hp > 0: 
+            if not self.dead and not self.enemy.dead: 
                 flip_side = Die.flip_coin() 
 
                 report.add('{} calls {}! '.format(self.name, side)) 
@@ -2957,21 +2956,16 @@ class Berserker(Player):
 
         await self.hp_changed(None) 
 
-        if self.enemy is not None and self.enemy.current_hp > 0: 
+        if self.enemy is not None and not self.enemy.dead: 
             if self.can_revive: 
                 async with self.enemy.acting(report): 
-                    if self.battle_turn: 
-                        await self.end_battle_turn(report) 
+                    await self.end_battle_turn(report) 
                     
                     report.add('{0} is so triggered that they did not die immediately. {0} enters Berserker Mode and goes for a final hit! '.format(self.name)) 
 
-                    await self.start_battle_turn(report) 
-
                     await self.switch_hit(report, self.enemy) 
 
-                    await self.end_battle_turn(report) 
-
-                    if self.enemy.current_hp == 0: 
+                    if self.enemy.dead: 
                         self.current_hp = 1
 
                         report.add("{} is so happy about killing {} that they revived with 1 HP! ".format(self.name, self.enemy.name)) 
