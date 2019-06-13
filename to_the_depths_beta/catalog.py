@@ -1409,12 +1409,41 @@ class Entity(Events):
 
         # noinspection PyTypeChecker
     
+    @classmethod
+    def gen_help_specials(cls, specials): 
+        if cls.starting_enemy_attack_multiplier != 1: 
+            percent = cls.starting_enemy_attack_multiplier - 1
+
+            specials.append(f'Takes {percent:+.0%} damage from enemy attacks') 
+        
+        if cls.starting_enemy_miss_bonus != 0: 
+            specials.append(f'Entities get {cls.starting_enemy_miss_bonus:+} miss chance while \
+attacking {cls.name}') 
+
+        if cls.starting_enemy_crit_bonus != 0: 
+            specials.append(f'Entities get {cls.starting_enemy_crit_bonus:+} crit chance while \
+attacking {cls.name}') 
+
+        if len(cls.starting_penetrates) > 0: 
+            penetrates_str = format_iterable(cls.starting_penetrates) 
+
+            specials.append(f'Penetrates {penetrates_str}') 
+        
+        if len(cls.starting_bleeds) > 0: 
+            bleeds_str = format_iterable(cls.starting_bleeds) 
+
+            specials.append(f'Bleeds {bleeds_str}') 
+    
     # noinspection PyTypeChecker
     @classmethod
     def help_embed(cls): 
         embed = discord.Embed(title=cls.name, type='rich', description=cls.description) 
-        
-        specials_str = make_list(cls.specials) 
+
+        specials = list(cls.specials) 
+
+        cls.gen_help_specials(specials) 
+
+        specials_str = make_list(specials) 
         
         embed.add_field(name='Special abilities', value=specials_str if len(specials_str) > 0 else None, inline=False) 
 
@@ -1424,36 +1453,52 @@ class Entity(Events):
         embed.add_field(name='Attack Damage', value=cls.starting_attack) 
         embed.add_field(name='Attack Multiplier', value=cls.starting_attack_multiplier) 
 
-        embed.add_field(name='Enemy Attack Multiplier', value=cls.starting_enemy_attack_multiplier)
-
         miss_string = format_iterable(range(1, min(cls.starting_miss, 6) + 1))
         crit_string = format_iterable(range(max(cls.starting_crit, 1), 7))
 
         embed.add_field(name='Misses on', value=miss_string if len(miss_string) > 0 else 'Cannot miss')
-        embed.add_field(name='Crits on', value=crit_string if len(crit_string) > 0 else 'Cannot crit')
-        embed.add_field(name='Enemy Miss Bonus', value='{:+}'.format(cls.starting_enemy_miss_bonus))
-        embed.add_field(name='Enemy Crit Bonus', value='{:+}'.format(cls.starting_enemy_crit_bonus)) 
-        embed.add_field(name='Can be missed', value=cls.starting_anti_missed <= 0) 
-        embed.add_field(name='Can be crit', value=cls.starting_anti_critted <= 0) 
+        embed.add_field(name='Crits on', value=crit_string if len(crit_string) > 0 else 'Cannot crit') 
 
         access_levels_string = format_iterable((level.name for level in cls.starting_access_levels)) 
 
-        embed.add_field(name='Can safely access', value=access_levels_string if len(access_levels_string) > 0 else 'nowhere')
-
-        penetrates_string = format_iterable(cls.starting_penetrates)
-        bleeds_string = format_iterable(cls.starting_bleeds)
-
-        embed.add_field(name='Penetrates', value=penetrates_string if len(penetrates_string) > 0 else 'nothing')
-        embed.add_field(name='Bleeds', value=bleeds_string if len(bleeds_string) > 0 else 'nothing') 
+        embed.add_field(name='Can safely access', value=access_levels_string if len(access_levels_string) > 0 else 'nowhere') 
 
         return embed
+    
+    def gen_stats_specials(self, specials): 
+        if self.enemy_attack_multiplier != 1: 
+            percent = self.enemy_attack_multiplier - 1
+
+            specials.append(f'Takes {percent:+.0%} damage from enemy attacks') 
+        
+        if self.enemy_miss_bonus != 0: 
+            specials.append(f'Entities get {self.enemy_miss_bonus:+} miss chance while \
+attacking {self.name}') 
+
+        if self.enemy_crit_bonus != 0: 
+            specials.append(f'Entities get {self.enemy_crit_bonus:+} crit chance while \
+attacking {self.name}') 
+
+        if len(self.penetrates) > 0: 
+            penetrates_str = format_iterable(self.penetrates) 
+
+            specials.append(f'Penetrates {penetrates_str}') 
+        
+        if len(self.bleeds) > 0: 
+            bleeds_str = format_iterable(self.bleeds) 
+
+            specials.append(f'Bleeds {bleeds_str}') 
 
     def stats_embed(self): 
         embed = discord.Embed(title=self.name, type='rich', description=self.description) 
 
         embed.add_field(name='Type', value=self.__class__.name) 
         
-        specials_str = make_list(self.specials)
+        specials = list(self.specials) 
+
+        self.gen_stats_specials(specials) 
+
+        specials_str = format_iterable(specials) 
 
         embed.add_field(name='Special abilities', value=specials_str if len(specials_str) > 0 else None, inline=False) 
 
@@ -1463,17 +1508,11 @@ class Entity(Events):
         embed.add_field(name='Attack Damage', value=self.current_attack) 
         embed.add_field(name='Attack Multiplier', value=self.attack_multiplier) 
 
-        embed.add_field(name='Enemy Attack Multiplier', value=self.enemy_attack_multiplier)
-
         miss_string = format_iterable(range(1, min(self.miss, 6) + 1))
         crit_string = format_iterable(range(max(self.crit, 1), 7))
 
         embed.add_field(name='Misses on', value=miss_string if len(miss_string) > 0 else 'Cannot miss')
-        embed.add_field(name='Crits on', value=crit_string if len(crit_string) > 0 else 'Cannot crit')
-        embed.add_field(name='Enemy Miss Bonus', value=self.enemy_miss_bonus)
-        embed.add_field(name='Enemy Crit Bonus', value=self.enemy_crit_bonus) 
-        embed.add_field(name='Can be missed', value=self.anti_missed <= 0) 
-        embed.add_field(name='Can be crit', value=self.anti_critted <= 0) 
+        embed.add_field(name='Crits on', value=crit_string if len(crit_string) > 0 else 'Cannot crit') 
 
         access_levels_string = format_iterable((level.name for level in self.access_levels))
 
@@ -1482,12 +1521,6 @@ class Entity(Events):
         
         embed.add_field(name='Attached fire damage', value=self.fire_damage) 
         embed.add_field(name='Attached electric potential damage', value=self.electric_damage) 
-
-        penetrates_string = format_iterable(self.penetrates)
-        bleeds_string = format_iterable(self.bleeds) 
-
-        embed.add_field(name='Penetrates', value=penetrates_string if len(penetrates_string) > 0 else 'nothing')
-        embed.add_field(name='Bleeds', value=bleeds_string if len(bleeds_string) > 0 else 'nothing') 
 
         return embed
     
@@ -2081,6 +2114,22 @@ class Player(Commander, metaclass=Player_Meta, append=False):
                 missing_items.append((required_item_class, deficit))
 
         return missing_items
+    
+    @classmethod
+    def gen_help_specials(cls, specials): 
+        super(Player, cls).gen_help_specials(specials) 
+
+        if len(cls.starting_multipliers) > 0: 
+            multipliers_gen = (f'x{multiplier} {item.name}' for item, multiplier in cls.starting_multipliers) 
+            multipliers_str = format_iterable(multipliers_gen) 
+
+            specials.append(f'Receives {multipliers_str} (except from donations) ') 
+        
+        if len(cls.starting_items) > 0: 
+            items_gen = (f'{amount} {item.name}(s)' for item, amount in cls.starting_items) 
+            items_str = format_iterable(items_gen) 
+
+            specials.append(f'Spawns with {items_str}') 
 
     # noinspection PyTypeChecker
     @classmethod
@@ -2089,27 +2138,21 @@ class Player(Commander, metaclass=Player_Meta, append=False):
 
         embed.add_field(name='Oxygen', value=cls.starting_oxygen) 
 
-        multipliers_gen = ('{} x{}'.format(item.name, multiplier) for item, multiplier in cls.starting_multipliers.items())
-        multipliers_string = make_list(multipliers_gen) 
-
-        embed.add_field(name='Item Multipliers', value=multipliers_string if len(multipliers_string) > 0 else None, inline=False) 
-
-        items_gen = ('{} x{}'.format(item.name, amount) for item, amount in cls.starting_items) 
-        items_str = make_list(items_gen) 
-
-        embed.add_field(name='Starts with', value=items_str if len(items_str) > 0 else 'Nothing', inline=False) 
-
         return embed
+    
+    def gen_stats_specials(self, specials): 
+        Commander.gen_stats_specials(self, specials) 
 
-    def stats_embed(self):
+        if len(self.multipliers) > 0: 
+            multipliers_gen = (f'x{multiplier} {item.name}' for item, multiplier in self.multipliers) 
+            multipliers_str = format_iterable(multipliers_gen) 
+
+            specials.append(f'Receives {multipliers_str} (except from donations) ') 
+
+    def stats_embed(self): 
         embed = Commander.stats_embed(self)
 
         embed.add_field(name='Oxygen', value='{} / {}'.format(self.current_oxygen, self.max_oxygen)) 
-
-        multipliers_gen = ('{} x{}'.format(item.name, multiplier) for item, multiplier in self.multipliers.items())
-        multipliers_string = make_list(multipliers_gen) 
-
-        embed.add_field(name='Item Multipliers', value=multipliers_string if len(multipliers_string) > 0 else None, inline=False) 
 
         embed.add_field(name='Game Turn', value=self.uo_game_turn)
         embed.add_field(name='Can move', value=self.can_move) 
@@ -3331,6 +3374,13 @@ class Creature(Commander, metaclass=Creature_Meta, append=False):
         print(self.__dict__) 
     
     @classmethod
+    def gen_help_specials(cls, specials): 
+        super(Creature, cls).gen_help_specials(specials) 
+
+        if cls.passive: 
+            specials.append('Passive - will flee the battle upon getting first hit') 
+    
+    @classmethod
     def help_embed(cls): 
         embed = super(Creature, cls).help_embed() 
 
@@ -3341,9 +3391,13 @@ class Creature(Commander, metaclass=Creature_Meta, append=False):
 
         embed.add_field(name='Stars', value=cls.stars) 
 
-        embed.add_field(name='Passive', value=cls.passive) 
-
         return embed
+    
+    def gen_stats_specials(self, specials): 
+        Commander.gen_stats_specials(self, specials) 
+
+        if self.passive: 
+            specials.append('Passive - will flee the battle upon getting first hit') 
     
     def stats_embed(self): 
         embed = Commander.stats_embed(self) 
@@ -3354,8 +3408,6 @@ class Creature(Commander, metaclass=Creature_Meta, append=False):
         embed.add_field(name='Drops', value=drops_str if len(drops_str) > 0 else 'Nothing', inline=False) 
 
         embed.add_field(name='Stars', value=self.stars) 
-
-        embed.add_field(name='Passive', value=self.passive) 
 
         embed.add_field(name='Was dragged', value=self.dragged) 
 
