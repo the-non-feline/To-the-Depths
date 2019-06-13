@@ -2120,7 +2120,7 @@ class Player(Commander, metaclass=Player_Meta, append=False):
         super(Player, cls).gen_help_specials(specials) 
 
         if len(cls.starting_multipliers) > 0: 
-            multipliers_gen = (f'x{multiplier} {item.name}' for item, multiplier in cls.starting_multipliers) 
+            multipliers_gen = (f'x{multiplier} {item.name}' for item, multiplier in cls.starting_multipliers.items()) 
             multipliers_str = format_iterable(multipliers_gen) 
 
             specials.append(f'Receives {multipliers_str} (except from donations) ') 
@@ -2144,7 +2144,7 @@ class Player(Commander, metaclass=Player_Meta, append=False):
         Commander.gen_stats_specials(self, specials) 
 
         if len(self.multipliers) > 0: 
-            multipliers_gen = (f'x{multiplier} {item.name}' for item, multiplier in self.multipliers) 
+            multipliers_gen = (f'x{multiplier} {item.name}' for item, multiplier in self.multipliers.items()) 
             multipliers_str = format_iterable(multipliers_gen) 
 
             specials.append(f'Receives {multipliers_str} (except from donations) ') 
