@@ -1498,7 +1498,7 @@ attacking {self.name}')
 
         self.gen_stats_specials(specials) 
 
-        specials_str = format_iterable(specials) 
+        specials_str = make_list(specials) 
 
         embed.add_field(name='Special abilities', value=specials_str if len(specials_str) > 0 else None, inline=False) 
 
