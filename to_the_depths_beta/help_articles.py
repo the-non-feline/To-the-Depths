@@ -30,7 +30,7 @@ this on a creature will result in it only dropping half its normal drops on deat
     bt_actions_gen = (f'`{action_name}` - {action_description}' for action_name, action_description in bt_actions) 
     bt_actions_str = ttd_tools.make_list(bt_actions_gen) 
     
-    name = 'fighting' 
+    name = 'Fighting' 
     description = 'Fighting is an integral part of To the Depths. This section explains the mechanics and commands behind fighting. ' 
     
     fields = ('Starting a fight', 'Starting a fight is done with the `fight` command. This starts a fight with a random creature from \
@@ -53,3 +53,22 @@ Performing any of these actions instantly ends your battle turn. '''), \
 it lands on any of the numbers listed in your current level\'s "Surprise attack chance" stat, you are surprise attacked by a \
 random creature in your current level. You can also be surprise attacked by {catalog.Stonefish.name} while mining. ') 
     
+class Games(Article): 
+    name = 'Games' 
+    description = 'This section explains how to create and join games in To the Depths, and how to invite \
+other people to them' 
+
+    fields = ('Creating a game', "Creating a game is done with the `creategame` command. When using this \
+command, you can also mention (ping) all the people who you'd like to invite to the game as well. Note that \
+the creator of the game will be invited automatically; you don't need to mention yourself. "), 
+    ('The queue', "Users who have been invited to a game but haven't joined as players are placed \
+in the queue. You also get placed here if you die in-game. "), 
+    ('Joining as a player', 'Once in the queue, you can join the game as a player using the `enter` command. \
+You must also specify your player class as an argument to this command. A list of player classes can be found \
+with `(prefix)helptopics classes`. Each class has unique pros and cons; look each class up with the `help` \
+command for details. '), 
+    ('Leaving the game', "Use the `leave` command if and only if you want to leave the **queue**. To leave \
+the game as a player, you must first `suicide`. This will place you in the queue, and then you can `leave`. \
+Note that you can only rejoin by being invited again. "), 
+    ('Inviting other users', 'After a game has started, you can invite more users with the `invite` command. \
+Mention (ping) the users to invite them. You must be a player in the game to invite other people. '), 
