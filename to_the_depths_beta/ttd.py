@@ -596,7 +596,7 @@ async def start_game(self, report, player):
 async def leave_game(self, report, game, author): 
     await game.remove_member(report, author) 
 
-@TTD_Bot.command('game', 'Displays info on the current game') 
+@TTD_Bot.command('viewgame', 'Displays info on the current game') 
 @commands.requires_game
 async def display_game(self, report, game, author): 
     report.add(game.stats_embed()) 
@@ -615,7 +615,7 @@ async def suicide(self, report, player):
 async def end_turn(self, report, player): 
     await player.end_turn(report) 
 
-@TTD_Bot.command('stats', "Without mentions, displays your own player's stats. With mentions, displays the stats of all mentioned people's players. ", indefinite_args=True, optional_args=('mentions',), special_args_check=creategame_args_check) 
+@TTD_Bot.command('viewstats', "Without mentions, displays your own player's stats. With mentions, displays the stats of all mentioned people's players. ", indefinite_args=True, optional_args=('mentions',), special_args_check=creategame_args_check) 
 @commands.requires_game
 async def display_players(self, report, game, author, *mentions): 
     if len(mentions) > 0: 
@@ -631,7 +631,7 @@ async def display_players(self, report, game, author, *mentions):
         else: 
             report.add('{} is not in this game. '.format(member.mention)) 
 
-@TTD_Bot.command('items', "Without mentions, displays your own player's items. With mentions, displays the items of all mentioned people's players. ", indefinite_args=True, optional_args=('mentions',), special_args_check=creategame_args_check) 
+@TTD_Bot.command('viewitems', "Without mentions, displays your own player's items. With mentions, displays the items of all mentioned people's players. ", indefinite_args=True, optional_args=('mentions',), special_args_check=creategame_args_check) 
 @commands.requires_game
 async def display_items(self, report, game, author, *mentions): 
     if len(mentions) > 0: 
@@ -647,7 +647,7 @@ async def display_items(self, report, game, author, *mentions):
         else: 
             report.add('{} is not in this game. '.format(member.mention)) 
 
-@TTD_Bot.command('enemy', "Without mentions, displays your own opponent's stats. With mentions, displays the stats of the opponents of all mentioned people's players. ", indefinite_args=True, optional_args=('mentions',), special_args_check=creategame_args_check) 
+@TTD_Bot.command('viewenemy', "Without mentions, displays your own opponent's stats. With mentions, displays the stats of the opponents of all mentioned people's players. ", indefinite_args=True, optional_args=('mentions',), special_args_check=creategame_args_check) 
 @commands.requires_game
 async def display_enemies(self, report, game, author, *mentions): 
     if len(mentions) > 0: 

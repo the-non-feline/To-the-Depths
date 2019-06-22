@@ -16,7 +16,7 @@ class Article(metaclass=Article_Meta, append=False):
         embed = discord.Embed(type='rich', title=f'Information on {cls.name}', description=cls.description) 
         
         for name, value in cls.fields: 
-            embed.add_field(name=name, value=value, inline=False) 
+            embed.add_field(name=name, value=value + '\n', inline=False) 
         
         return embed
 
@@ -42,7 +42,7 @@ flip is used to determine who gets the first hit. Creatures automatically get a 
 who gets the next battle turn. "), \
     ('Battle turns', 'When you get first hit or win the coinflip after using the `call` command, it becomes your "battle turn". \
 On your battle turn, you can do anything that does not require a move. Additionally, you can perform any of the actions listed in the \
-following section. '), \
+following section. You are locked out of all actions during your enemy\'s battle turn. '), \
     ('Special actions', f'''These actions can only be performed on your battle turn. The commands to perform them are the same as the \
 name of the action: 
 
@@ -82,8 +82,8 @@ damage',
     f"You're checked to see if you get surprise attacked. Surprise attack is explained in the \
 `{Fighting.name}` guide. ") 
     before_turn_str = ttd_tools.make_list(before_turn_stuff, numbered=True) 
-    move_using = ('Crafting items', 'Starting a fight', 'Gathering items', 'Mining', 
-    'Moving levels (unless through using an ability or item)', 'Regenning your own HP') 
+    move_using = ('`craft`ing items', 'Starting a `fight`', '`gather`ing items', '`mine`ing', 
+    '`move`ing levels (unless through using an ability or item)', '`regen`ning your own HP') 
     move_using_str = ttd_tools.make_list(move_using) 
 
     name = 'Turns' 
@@ -109,3 +109,31 @@ certain actions (detailed in the next part) will use your "move". '), \
 This means you can only do one of these actions, once, per turn. '''), \
     ('Ending your turn', "Ending your turn is done through the `endturn` command. Note that you can't end your \
 turn in the middle of a fight. Your turn also ends if you die. ") 
+
+class Items(Article): 
+    obtainments = ('`craft`ing (explained below) ', 'Having another player `donate` to you', 'Most creatures \
+drop items upon dying. The items and amounts dropped depend on the creature. ', '`gather`ing', '`mine`ing') 
+    obtainments_str = ttd_tools.make_list(obtainments) 
+
+    name = 'Items' 
+    description = 'This section covers items in To the Depths' 
+
+    fields = ('Overview', "Items are an integral part of the game. They can be obtained through various \
+methods, and usually boost your player. "), \
+    ('How to obtain items', f'''Items can be obtained through any of the following methods: 
+
+{obtainments_str}'''), \
+    ('Crafting items', 'Some items can be used to craft other items through the `craft` command. Note that \
+you can only craft one type of item per turn, as doing this takes your move. You can, however, craft \
+multiple of that item at once. '), \
+    ('The "Item Multipliers" stat', f'Some players will get a bonus on certain items, listed in their "Item \
+Multipliers" stat. Some items can give you bonuses on other items too. Multipliers stack; if you have a \
+1.5x multiplier on all items and a 2x multiplier on {catalog.Steel.name}, you\'ll receive 3x \
+{catalog.Steel.name}. Items you receive from crafting and donations are not affected by this stat. '), \
+    ('"Stacking"', f"In most cases, a given item's bonuses don't stack with the same bonuses of another of \
+the same item. For example, 2 {catalog.Suit.name}s won't both give you HP; only the first one will. "), \
+    ('Using items', 'Some items are usable through the `use` command. Each of them does something \
+different upon being used. Most items disappear after being used, although there are some exceptions. Some \
+items also have restrictions on when and how often you can use them. '), \
+    ('Donating', 'You can donate items to another player using the `donate` command. Note that both players \
+must be in the same level to do this. ') 

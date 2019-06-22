@@ -131,7 +131,7 @@ class Events(ttd_tools.Game_Object):
         pass
 
 class All(storage.D_Meta): 
-    name = 'All' 
+    name = 'all items' 
 
 # noinspection PyMethodOverriding
 
