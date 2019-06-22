@@ -75,15 +75,16 @@ Mention (ping) the users to invite them. You must be a player in the game to inv
 
 class Turns(Article): 
     before_turn_stuff = (f"If you're not protected from pressure damage in your level, you will take \
-pressure damage ({catalog.Player.pd_slope} for every level past safety) ", 
+pressure damage ({catalog.Player.pd_slope} damage for every level past safety) ", 
     'You lose 1 oxygen', 
-    f'If you have 0 oxygen left at this point, you immediately take {catalog.Player.oxygen_damage}', 
+    f'If you have 0 oxygen left at this point, you immediately take {catalog.Player.oxygen_damage} \
+damage', 
     f"You're checked to see if you get surprise attacked. Surprise attack is explained in the \
 `{Fighting.name}` guide. ") 
     before_turn_str = ttd_tools.make_list(before_turn_stuff, numbered=True) 
     move_using = ('Crafting items', 'Starting a fight', 'Gathering items', 'Mining', 
     'Moving levels (unless through using an ability or item)', 'Regenning your own HP') 
-    move_using_str = ttd_tools.format_iterable(move_using) 
+    move_using_str = ttd_tools.make_list(move_using) 
 
     name = 'Turns' 
     description = 'This section explains the "game turns" in To the Depths' 
