@@ -71,4 +71,40 @@ command for details. '), \
 the game as a player, you must first `suicide`. This will place you in the queue, and then you can `leave`. \
 Note that you can only rejoin by being invited again. "), \
     ('Inviting other users', 'After a game has started, you can invite more users with the `invite` command. \
-Mention (ping) the users to invite them. You must be a player in the game to invite other people. '), 
+Mention (ping) the users to invite them. You must be a player in the game to invite other people. ') 
+
+class Turns(Article): 
+    before_turn_stuff = (f"If you're not protected from pressure damage in your level, you will take \
+pressure damage ({catalog.Player.pd_slope} for every level past safety) ", 
+    'You lose 1 oxygen', 
+    f'If you have 0 oxygen left at this point, you immediately take {catalog.Player.oxygen_damage}', 
+    f"You're checked to see if you get surprise attacked. Surprise attack is explained in the \
+`{Fighting.name}` guide. ") 
+    before_turn_str = ttd_tools.make_list(before_turn_stuff, numbered=True) 
+    move_using = ('Crafting items', 'Starting a fight', 'Gathering items', 'Mining', 
+    'Moving levels (unless through using an ability or item)', 'Regenning your own HP') 
+    move_using_str = ttd_tools.format_iterable(move_using) 
+
+    name = 'Turns' 
+    description = 'This section explains the "game turns" in To the Depths' 
+
+    fields = ('"Game turn"', 'Your player can only do things on their "game turn". Only one person can have \
+the game turn. This is sometimes referred to as just "turn". '), \
+    ('Starting your game turn', f'''Your game turn starts when the player before you ends theirs, or when \
+you're the first player in the players list when the game starts. \
+When your turn starts, you are given back your "move". However, if you\'re in a level deeper than the \
+{catalog.Levels.Surface.name}, you can\'t immediately act when your turn starts; a few things must happen \
+first, in this order: 
+
+{before_turn_str} 
+
+After these, you're allowed to act (although if you get surprise attacked you\'ll be forced into a fight). '''), \
+    ('What you can do during your turn', 'You can do basically anything during your turn. Note however that \
+certain actions (detailed in the next part) will use your "move". '), \
+    ('Your "move"', f'''The following actions use your move: 
+
+{move_using_str}
+
+This means you can only do one of these actions, once, per turn. '''), \
+    ('Ending your turn', "Ending your turn is done through the `endturn` command. Note that you can't end your \
+turn in the middle of a fight. Your turn also ends if you die. ") 

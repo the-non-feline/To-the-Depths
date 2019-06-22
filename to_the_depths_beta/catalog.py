@@ -1954,6 +1954,7 @@ class Player(Commander, metaclass=Player_Meta, append=False):
     
     regen_bonus = 20
     failed_flee_punishment = 2
+    oxygen_damage = 100
 
     '''
     name = ''
@@ -2237,7 +2238,7 @@ class Player(Commander, metaclass=Player_Meta, append=False):
     async def take_oxygen_damage(self, report):
         report.add('{} takes oxygen damage! '.format(self.name)) 
 
-        await self.take_damage(report, 100, penetrates=('shield',)) 
+        await self.take_damage(report, self.oxygen_damage, penetrates=('shield',)) 
     
     @action
     async def check_current_oxygen(self, report): 
