@@ -2124,7 +2124,7 @@ class Player(Commander, metaclass=Player_Meta, append=False):
             multipliers_gen = (f'x{multiplier} {item.name}' for item, multiplier in cls.starting_multipliers.items()) 
             multipliers_str = format_iterable(multipliers_gen) 
 
-            specials.append(f'Receives {multipliers_str} (except from donations) ') 
+            specials.append(f'Receives {multipliers_str} (except from donations and crafting) ') 
         
         if len(cls.starting_items) > 0: 
             items_gen = (f'{amount} {item.name}(s)' for item, amount in cls.starting_items) 
@@ -2148,7 +2148,7 @@ class Player(Commander, metaclass=Player_Meta, append=False):
             multipliers_gen = (f'x{multiplier} {item.name}' for item, multiplier in self.multipliers.items()) 
             multipliers_str = format_iterable(multipliers_gen) 
 
-            specials.append(f'Receives {multipliers_str} (except from donations) ') 
+            specials.append(f'Receives {multipliers_str} (except from donations and crafting) ') 
 
     def stats_embed(self): 
         embed = Commander.stats_embed(self)
