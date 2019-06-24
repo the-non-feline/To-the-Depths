@@ -137,3 +137,37 @@ different upon being used. Most items disappear after being used, although there
 items also have restrictions on when and how often you can use them. '), \
     ('Donating', 'You can donate items to another player using the `donate` command. Note that both players \
 must be in the same level to do this. ') 
+
+class Introduction(Article): 
+    name = 'Introduction' 
+    description = 'To the Depths is a game played through interacting with this Discord bot. This section \
+covers the basics of using this bot. ' 
+
+    fields = ('Commands', '''The bot is controlled mostly through commands. Commands consist of 3 parts, the \
+prefix, the command name, and the arguments (or parameters). If you've used Discord bots before, you probably \
+already understand how it works. 
+
+All commands must start with the prefix. This is needed so the bot knows you're talking to it. If you're \
+reading this you should already know what the prefix for your server is. 
+
+The second part of the command is the command name. This tells the bot what to do. It must always be \
+attached to the prefix (not separated by a space or something). A full list of valid command names can be \
+found by typing `(prefix)helptopics commands`. 
+
+The last part of the command is the arguments/parameters. These give more information about what exactly \
+you're trying to do. Each one of these must be separated by a space. Note that each command accepts a \
+different number of arguments. '''), \
+    ('Prompts', '''Occasionally, the bot will directly ask you for provide information. There are 2 forms of prompts. 
+
+The first kind is a message prompt, asking you to respond with a message. Respond to these just like how you \
+would respond to a regular person asking you for an answer; you don't need to format your message like a \
+command. 
+
+The second kind is a reaction prompt, asking you to respond with a reaction. The bot will tell you what you \
+can react with. 
+
+Note that most prompts have a time limit. If you don't respond within the time limit, the bot will just \
+choose a default response for you. '''), \
+    ('Additional help', 'Additional help is provided through the `help` and `helptopics` commands. `help` \
+displays useful info on all topics that you specified in its arguments. `helptopics` is used to list valid \
+topic names. ') 

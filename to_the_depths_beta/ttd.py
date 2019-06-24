@@ -691,7 +691,7 @@ async def help_args_check(self, report, author, *topics):
     else: 
         return True
 
-@TTD_Bot.command('help', 'Without arguments, displays help on the `help` command itself. With arguments, displays help on all specified topics. ', 
+@TTD_Bot.command('help', f'Without arguments, displays help on the `{help_articles.Introduction.name}` guide. With arguments, displays help on all specified topics. ', 
                  special_note="Use the `helptopics` command to view a list of all the valid help entries (look it up with this command for more "
                               "info on how to use it). If you just "
                               "wanted to find out "
@@ -705,7 +705,7 @@ async def display_help(self, report, author, *topics):
     total_topics = self.help_categories(report.channel)['all'] 
 
     if len(topics) == 0: 
-        topics = ('help',) 
+        topics = (help_articles.Introduction.name,) 
     
     results = ttd_tools.bulk_search(total_topics, topics) 
 
