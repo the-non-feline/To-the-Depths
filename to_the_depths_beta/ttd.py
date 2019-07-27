@@ -768,7 +768,7 @@ category_filters_str = ttd_tools.make_list(category_filters)
 @TTD_Bot.command('helptopics', 'Displays all the valid help entries corresponding to the specified category', 
 special_note=f'''Valid categories and filters for each category are: 
 
-{category_filters_str}''', required_args=('category',), optional_args=('filters',), 
+{category_filters_str}''', indefinite_args=True, required_args=('category',), optional_args=('filters',), 
                  special_args_check=helptopics_args_check) 
 async def display_topics(self, report, author, category, *filters): 
     help_categories = self.help_categories(report.channel) 
