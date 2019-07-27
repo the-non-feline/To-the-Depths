@@ -739,7 +739,7 @@ async def helptopics_args_check(self, report, author, category, *filters):
         
         report.add('{}, argument `category` must be one of the following: {}. '.format(author.mention, categories_str)) 
     else: 
-        entries = help_categories[category] 
+        entries = help_categories[category.lower()] 
 
         valid_filters = entries.valid_names(filters) 
 
