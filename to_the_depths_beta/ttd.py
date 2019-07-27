@@ -782,7 +782,7 @@ async def display_topics(self, report, author, category, *filters):
     topic_names = (topic.name for topic in filtered) 
     topics_str = ttd_tools.make_list(topic_names) 
     
-    embed = discord.Embed(title='All help entries in category `{}`'.format(category), description=topics_str || None)  
+    embed = discord.Embed(title='All help entries in category `{}`'.format(category), description=topics_str or None)  
 
     embed.add_field(name='Important note', value='Look up any topics with the `help` command for more info about them. For multi-word topics, '
                                                  'such as `Sky Blade`, all spaces must be '
