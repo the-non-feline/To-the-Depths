@@ -787,7 +787,7 @@ async def display_topics(self, report, author, category, *filters):
     topics_str = ttd_tools.make_list(topic_names) or None
 
     filters_set = set(map(str.lower, filters)) 
-    filters_str = ttd_tools.format_iterable(filters_set, formatter='`{}`') or None
+    filters_str = ttd_tools.format_iterable(filters_set, formatter='`{}`') or 'None'
     
     embed = discord.Embed(title=f'All help entries in category `{category}` with filter(s) {filters_str}', description=topics_str)  
 
