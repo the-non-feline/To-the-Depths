@@ -765,7 +765,8 @@ else None
 
 category_filters_str = ttd_tools.make_list(category_filters) 
 
-@TTD_Bot.command('helptopics', 'Displays all the valid help entries corresponding to the specified category', 
+@TTD_Bot.command('helptopics', 'Displays all the valid help entries corresponding to the specified category \
+that pass the specified filters', 
 special_note=f'''Valid categories and filters for each category are: 
 
 {category_filters_str}''', indefinite_args=True, required_args=('category',), optional_args=('filters',), 
@@ -780,12 +781,12 @@ async def display_topics(self, report, author, category, *filters):
     filtered.sort(key=lambda item: item.name.lower()) 
 
     topic_names = (topic.name for topic in filtered) 
-    topics_str = ttd_tools.make_list(topic_names) 
+    topics_str = ttd_tools.make_list(topic_names) or None
 
     filters_set = set(map(str.lower, filters)) 
     filters_str = ttd_tools.format_iterable(filters_set, formatter='`{}`') or None
     
-    embed = discord.Embed(title=f'All help entries in category `{category}` with filters {filters_str}', description=topics_str or 'None')  
+    embed = discord.Embed(title=f'All help entries in category `{category}` with filter(s) {filters_str}', description=topics_str)  
 
     embed.add_field(name='Important note', value='Look up any topics with the `help` command for more info about them. For multi-word topics, '
                                                  'such as `Sky Blade`, all spaces must be '
