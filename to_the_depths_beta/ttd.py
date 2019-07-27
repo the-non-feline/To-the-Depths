@@ -747,7 +747,7 @@ async def helptopics_args_check(self, report, author, category, *filters):
             names_str = ttd_tools.format_iterable(entries.filters.keys(), formatter='`{}`') 
 
             report.add(f'{author.mention}, valid filters for category `{category}` can only be the following: \
-{names_str}. ') 
+{names_str or None}. ') 
         else: 
             return True
 
@@ -782,7 +782,7 @@ async def display_topics(self, report, author, category, *filters):
     topic_names = (topic.name for topic in filtered) 
     topics_str = ttd_tools.make_list(topic_names) 
     
-    embed = discord.Embed(title='All help entries in category `{}`'.format(category), description=topics_str)  
+    embed = discord.Embed(title='All help entries in category `{}`'.format(category), description=topics_str || None)  
 
     embed.add_field(name='Important note', value='Look up any topics with the `help` command for more info about them. For multi-word topics, '
                                                  'such as `Sky Blade`, all spaces must be '
