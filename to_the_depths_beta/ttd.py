@@ -97,7 +97,7 @@ class TTD_Bot(discord.Client, storage.Deconstructable):
         return self.default_prefix
     
     def channel_commands(self, channel): 
-        return list((command(self, channel) for command in self.bot_commands)) 
+        return ttd_tools.Filterable((command(self, channel) for command in self.bot_commands)) 
     
     @classmethod
     def bare_categories(cls): 
@@ -105,28 +105,24 @@ class TTD_Bot(discord.Client, storage.Deconstructable):
 
         categories['commands'] = cls.bot_commands
         
-        all_categories = ttd_tools.Filterable() 
-
-        for category, entries in categories.items(): 
-            all_categories.extend(entries) 
-        
-        categories['all'] = all_categories
-        
         return categories.copy() 
     
     def help_categories(self, channel): 
         categories = self.categories
 
         categories['commands'] = self.channel_commands(channel) 
+        
+        return categories.copy() 
+    
+    def all_help_categories(self, channel): 
+        categories = self.help_categories(channel) 
 
         all_categories = ttd_tools.Filterable() 
 
         for category, entries in categories.items(): 
             all_categories.extend(entries) 
         
-        categories['all'] = all_categories
-        
-        return categories.copy() 
+        return all_categories.copy() 
     
     '''
     @contextlib.contextmanager
@@ -705,7 +701,7 @@ async def gather_item(self, report, player, item):
     await player.gather(report, item) 
 
 async def help_args_check(self, report, author, *topics): 
-    total_topics = self.help_categories(report.channel)['all'] 
+    total_topics = self.all_help_categories(report.channel) 
 
     results = ttd_tools.bulk_search(total_topics, topics) 
 
@@ -725,7 +721,7 @@ async def help_args_check(self, report, author, *topics):
             'topics',), 
                  special_args_check=help_args_check) 
 async def display_help(self, report, author, *topics): 
-    total_topics = self.help_categories(report.channel)['all'] 
+    total_topics = self.all_help_categories(report.channel)
 
     if len(topics) == 0: 
         topics = (help_articles.Introduction.name,) 
@@ -735,7 +731,7 @@ async def display_help(self, report, author, *topics):
     for topic in results: 
         report.add(topic.help_embed()) 
 
-async def helptopics_args_check(self, report, author, category='all', *filters): 
+async def helptopics_args_check(self, report, author, category, *filters): 
     help_categories = self.help_categories(report.channel) 
     
     if category.lower() not in help_categories: 
@@ -769,13 +765,12 @@ else None
 
 category_filters_str = ttd_tools.make_list(category_filters) 
 
-@TTD_Bot.command('helptopics', 'Displays all the valid help entries corresponding to the specified category. The category can also be omitted or '
-                               'set to `all` to display all valid help entries. ', 
+@TTD_Bot.command('helptopics', 'Displays all the valid help entries corresponding to the specified category', 
 special_note=f'''Valid categories and filters for each category are: 
 
-{category_filters_str}''', optional_args=('category', 'filters'), 
+{category_filters_str}''', required_args=('category',), optional_args=('filters',), 
                  special_args_check=helptopics_args_check) 
-async def display_topics(self, report, author, category='all', *filters): 
+async def display_topics(self, report, author, category, *filters): 
     help_categories = self.help_categories(report.channel) 
     
     all_topics = help_categories[category.lower()] 
@@ -787,7 +782,7 @@ async def display_topics(self, report, author, category='all', *filters):
     topic_names = (topic.name for topic in filtered) 
     topics_str = ttd_tools.make_list(topic_names) 
     
-    embed = discord.Embed(title='All help entries in category `{}`'.format(category), description=topics_str) 
+    embed = discord.Embed(title='All help entries in category `{}`'.format(category), description=topics_str)  
 
     embed.add_field(name='Important note', value='Look up any topics with the `help` command for more info about them. For multi-word topics, '
                                                  'such as `Sky Blade`, all spaces must be '
