@@ -744,10 +744,10 @@ async def helptopics_args_check(self, report, author, category, *filters):
         valid_filters = entries.valid_names(filters) 
 
         if not valid_filters: 
-            names_str = ttd_tools.format_iterable(entries.filters.keys(), formatter='`{}`') 
+            names_str = ttd_tools.format_iterable(entries.filters.keys(), formatter='`{}`') or None
 
             report.add(f'{author.mention}, valid filters for category `{category}` can only be the following: \
-{names_str or None}. ') 
+{names_str}. ') 
         else: 
             return True
 
@@ -769,7 +769,10 @@ category_filters_str = ttd_tools.make_list(category_filters)
 that pass the specified filters', 
 special_note=f'''Valid categories and filters for each category are: 
 
-{category_filters_str}''', indefinite_args=True, required_args=('category',), optional_args=('filters',), 
+{category_filters_str}
+
+Filters stack; specifying multiple filters means displaying entries that pass **all** of them. ''', 
+indefinite_args=True, required_args=('category',), optional_args=('filters',), 
                  special_args_check=helptopics_args_check) 
 async def display_topics(self, report, author, category, *filters): 
     help_categories = self.help_categories(report.channel) 
