@@ -78,3 +78,27 @@ class GO_Meta(storage.D_Meta):
             mcs.append_to.append(cls) 
         
         return cls
+
+class Filterable(list): 
+    def __init__(self, iterable=(), **filters): 
+        self.filters = filters
+
+        list.__init__(self, iterable) 
+    
+    def valid_names(self, names): 
+        valid_gen = ((name.lower() in self.filters) for name in names) 
+
+        return all(valid_gen) 
+    
+    @staticmethod
+    def passes_all(filters, to_check): 
+        passes_gen = (current_filter(to_check) for current_filter in filters) 
+
+        return all(passes_gen) 
+    
+    def get_filtered(self, filters): 
+        filters = [self.filters[name.lower()] for name in filters] 
+
+        filtered = [to_check for to_check in self if self.passes_all(filters, to_check)] 
+
+        return filtered

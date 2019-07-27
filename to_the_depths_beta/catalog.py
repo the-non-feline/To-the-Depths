@@ -221,10 +221,17 @@ class Levels(enum.Enum):
     Middle = enum.auto() 
 
 #this is to prevent errors from trying to view the incomplete Middle
-levels = list(Levels) 
+levels = ttd_tools.Filterable(iterable=Levels) 
 
+items_filters = {
+    'usables': lambda item: item.is_usable, 
+    'craftables': lambda item: item.recipe is not None, 
+    'armors': lambda item: item.is_a(Armor), 
+    'weapons': lambda item: item.is_a(Weapon), 
+    'shields': lambda item: item.is_a(Shield), 
+}
 # noinspection PyMethodOverriding
-items = [] 
+items = ttd_tools.Filterable(**items_filters)  
 
 class Item_Meta(ttd_tools.GO_Meta): 
     append_to = items
@@ -1932,7 +1939,7 @@ class Commander(Entity):
     async def on_global_event(self, report, event_name, *args, **kwargs): 
         pass
 
-classes = [] 
+classes = ttd_tools.Filterable() 
 
 class Player_Meta(ttd_tools.GO_Meta): 
     append_to = classes
@@ -3331,7 +3338,11 @@ target. Likewise, the enemy can't miss when hitting a stunned {name}. ")
             await self.switch_hit(report, target) 
         ''' 
 
-creatures = [] 
+creatures_filters = {
+    'drops-stuff': lambda creature: len(creature.starting_drops) > 0, 
+} 
+
+creatures = ttd_tools.Filterable(**creatures_filters) 
 
 class Creature_Meta(ttd_tools.GO_Meta): 
     append_to = creatures

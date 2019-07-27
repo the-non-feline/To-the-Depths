@@ -1,7 +1,7 @@
 import discord
 from . import ttd_tools, catalog
 
-articles = [] 
+articles = ttd_tools.Filterable() 
 
 class Article_Meta(ttd_tools.GO_Meta): 
     append_to = articles

@@ -56,7 +56,15 @@ def text_load(file, default):
         return default
 
 class TTD_Bot(discord.Client, storage.Deconstructable): 
-    bot_commands = [] 
+    bot_commands = ttd_tools.Filterable() 
+
+    categories = {
+        'levels': catalog.levels, 
+        'items': catalog.items, 
+        'classes': catalog.classes, 
+        'creatures': catalog.creatures, 
+        'guides': help_articles.articles, 
+    } 
 
     #help stuff
     #print(catalog.levels) 
@@ -91,19 +99,34 @@ class TTD_Bot(discord.Client, storage.Deconstructable):
     def channel_commands(self, channel): 
         return list((command(self, channel) for command in self.bot_commands)) 
     
+    @classmethod
+    def bare_categories(cls): 
+        categories = cls.categories.copy() 
+
+        categories['commands'] = cls.bot_commands
+        
+        all_categories = ttd_tools.Filterable() 
+
+        for category, entries in categories.items(): 
+            all_categories.extend(entries) 
+        
+        categories['all'] = all_categories
+        
+        return categories.copy() 
+    
     def help_categories(self, channel): 
-        categories = {
-            'levels': catalog.levels, 
-            'items': catalog.items, 
-            'classes': catalog.classes, 
-            'creatures': catalog.creatures, 
-            'commands': self.channel_commands(channel), 
-            'guides': help_articles.articles, 
-        } 
+        categories = self.categories
+
+        categories['commands'] = self.channel_commands(channel) 
+
+        all_categories = ttd_tools.Filterable() 
+
+        for category, entries in categories.items(): 
+            all_categories.extend(entries) 
         
-        categories['all'] = sum(categories.values(), []) 
+        categories['all'] = all_categories
         
-        return categories
+        return categories.copy() 
     
     '''
     @contextlib.contextmanager
@@ -712,7 +735,7 @@ async def display_help(self, report, author, *topics):
     for topic in results: 
         report.add(topic.help_embed()) 
 
-async def helptopics_args_check(self, report, author, category='all'): 
+async def helptopics_args_check(self, report, author, category='all', *filters): 
     help_categories = self.help_categories(report.channel) 
     
     if category.lower() not in help_categories: 
@@ -720,19 +743,48 @@ async def helptopics_args_check(self, report, author, category='all'):
         
         report.add('{}, argument `category` must be one of the following: {}. '.format(author.mention, categories_str)) 
     else: 
-        return True
+        entries = help_categories[category] 
+
+        valid_filters = entries.valid_names(filters) 
+
+        if not valid_filters: 
+            names_str = ttd_tools.format_iterable(entries.filters.keys(), formatter='`{}`') 
+
+            report.add(f'{author.mention}, valid filters for category `{category}` can only be the following: \
+{names_str}. ') 
+        else: 
+            return True
+
+bare_categories = TTD_Bot.bare_categories() 
+
+categories_str = ttd_tools.format_iterable(bare_categories.keys(), formatter='`{}`') 
+
+category_filters = [] 
+
+for category, entries in bare_categories.items(): 
+    filters_str = ttd_tools.format_iterable(entries.filters.keys(), formatter='`{}`') if entries.filters \
+else None
+
+    category_filters.append(f'`{category}` - {filters_str}') 
+
+category_filters_str = ttd_tools.make_list(category_filters) 
 
 @TTD_Bot.command('helptopics', 'Displays all the valid help entries corresponding to the specified category. The category can also be omitted or '
-                               'set to `all` to display all valid help entries. ', optional_args=('category',), 
+                               'set to `all` to display all valid help entries. ', 
+special_note=f'''Valid categories and filters for each category are: 
+
+{category_filters_str}''', optional_args=('category', 'filters'), 
                  special_args_check=helptopics_args_check) 
-async def display_topics(self, report, author, category='all'): 
+async def display_topics(self, report, author, category='all', *filters): 
     help_categories = self.help_categories(report.channel) 
     
     all_topics = help_categories[category.lower()] 
-    
-    all_topics.sort(key=lambda item: item.name.lower()) 
 
-    topic_names = (topic.name for topic in all_topics) 
+    filtered = all_topics.get_filtered(filters) 
+    
+    filtered.sort(key=lambda item: item.name.lower()) 
+
+    topic_names = (topic.name for topic in filtered) 
     topics_str = ttd_tools.make_list(topic_names) 
     
     embed = discord.Embed(title='All help entries in category `{}`'.format(category), description=topics_str) 
