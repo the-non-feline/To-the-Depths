@@ -65,7 +65,7 @@ the creator of the game will be invited automatically; you don't need to mention
 in the queue. You also get placed here if you die in-game. "), \
     ('Joining as a player', 'Once in the queue, you can join the game as a player using the `enter` command. \
 You must also specify your player class as an argument to this command. A list of player classes can be found \
-with `(prefix)helptopics classes`. Each class has unique pros and cons; look each class up with the `help` \
+with `(prefix)list classes`. Each class has unique pros and cons; look each class up with the `help` \
 command for details. '), \
     ('Leaving the game', "Use the `leave` command if and only if you want to leave the **queue**. To leave \
 the game as a player, you must first `suicide`. This will place you in the queue, and then you can `leave`. \
@@ -152,7 +152,7 @@ reading this you should already know what the prefix for your server is.
 
 The second part of the command is the command name. This tells the bot what to do. It must always be \
 attached to the prefix (not separated by a space or something). A full list of valid command names can be \
-found by typing `(prefix)helptopics commands`. 
+found by typing `(prefix)list commands`. 
 
 The last part of the command is the arguments/parameters. These give more information about what exactly \
 you're trying to do. Each one of these must be separated by a space. Note that each command accepts a \
@@ -168,6 +168,6 @@ can react with.
 
 Note that most prompts have a time limit. If you don't respond within the time limit, the bot will just \
 choose a default response for you. '''), \
-    ('Additional help', 'Additional help is provided through the `help` and `helptopics` commands. `help` \
-displays useful info on all topics that you specified in its arguments. `helptopics` is used to list valid \
+    ('Additional help', 'Additional help is provided through the `help` and `list` commands. `help` \
+displays useful info on all topics that you specified in its arguments. `list` is used to list valid \
 topic names. ') 

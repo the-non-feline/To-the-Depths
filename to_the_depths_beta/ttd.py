@@ -534,9 +534,7 @@ class TTD_Bot(discord.Client, storage.Deconstructable):
                                 if target_command is not None: 
                                     await self.run_command(report, author, target_command, arguments) 
                                 else: 
-                                    report.add("{}, that wasn't a valid command. Type `{}helptopics commands` to view a list of all the commands for this bot. "
-                                               "".format(author.mention,
-                                                                                                                                                prefix)) 
+                                    report.add(f"{author.mention}, that wasn't a valid command. Type `{prefix}{display_topics.name} commands` to view a list of all the commands for this bot. ") 
                         else: 
                             await self.do(message.add_reaction(zipper_mouth_emoji)) 
 
@@ -591,8 +589,7 @@ async def enter_args_check(self, report, author, class_choice):
     if target_class is not None: 
         return True
     else: 
-        report.add('{}, argument `class` must be a player class. Type `{}helptopics classes` to see a list of all valid player classes. '.format(
-            author.mention, self.prefix(report.channel))) 
+        report.add(f'{author.mention}, argument `class` must be a player class. Type `{self.prefix(report.channel)}{display_topics} classes` to see a list of all valid player classes. ') 
 
 @TTD_Bot.command('enter', 'Enters the game as a player with the specified class', required_args=('class',), special_args_check=enter_args_check) 
 @commands.requires_no_player
@@ -709,11 +706,11 @@ async def help_args_check(self, report, author, *topics):
         return True
 
 @TTD_Bot.command('help', f'Without arguments, displays help on the `{help_articles.Introduction.name}` guide. With arguments, displays help on all specified topics. ', 
-                 special_note="Use the `helptopics` command to view a list of all the valid help entries (look it up with this command for more "
+                 special_note="Use the `list` command to view a list of all the valid help entries (look it up with this command for more "
                               "info on how to use it). If you just "
                               "wanted to find out "
                               "what all the "
-                              "commands for this bot are, use the `helptopics` command with `commands` as the category. Don't forget the prefix! ", 
+                              "commands for this bot are, use the `list` command with `commands` as the category. Don't forget the prefix! ", 
                  indefinite_args=True, 
                  optional_args=(
             'topics',), 
@@ -729,7 +726,7 @@ async def display_help(self, report, author, *topics):
     for topic in results: 
         report.add(topic.help_embed()) 
 
-async def helptopics_args_check(self, report, author, category, *filters): 
+async def list_args_check(self, report, author, category, *filters): 
     help_categories = self.help_categories(report.channel) 
     
     if category.lower() not in help_categories: 
@@ -763,15 +760,15 @@ else None
 
 category_filters_str = ttd_tools.make_list(category_filters) 
 
-@TTD_Bot.command('helptopics', 'Displays all the valid help entries corresponding to the specified category \
+@TTD_Bot.command('list', 'Lists all the valid help entries corresponding to the specified category \
 that pass the specified filters', 
 special_note=f'''Valid categories and filters for each category are: 
 
 {category_filters_str}
 
-Filters stack; specifying multiple filters means displaying entries that pass **all** of them. ''', 
+Filters stack; specifying multiple filters means listing entries that pass **all** of them. ''', 
 indefinite_args=True, required_args=('category',), optional_args=('filters',), 
-                 special_args_check=helptopics_args_check) 
+                 special_args_check=list_args_check) 
 async def display_topics(self, report, author, category, *filters): 
     help_categories = self.help_categories(report.channel) 
     
