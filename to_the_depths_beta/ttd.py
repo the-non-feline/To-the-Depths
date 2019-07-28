@@ -589,7 +589,7 @@ async def enter_args_check(self, report, author, class_choice):
     if target_class is not None: 
         return True
     else: 
-        report.add(f'{author.mention}, argument `class` must be a player class. Type `{self.prefix(report.channel)}{display_topics} classes` to see a list of all valid player classes. ') 
+        report.add(f'{author.mention}, argument `class` must be a player class. Type `{self.prefix(report.channel)}{display_topics.name} classes` to see a list of all valid player classes. ') 
 
 @TTD_Bot.command('enter', 'Enters the game as a player with the specified class', required_args=('class',), special_args_check=enter_args_check) 
 @commands.requires_no_player
