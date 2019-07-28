@@ -225,6 +225,9 @@ levels = ttd_tools.Filterable(iterable=Levels)
 
 items_filters = {
     'usables': lambda item: item.is_usable, 
+    'gatherables': lambda item: item.gatherable(), 
+    'droppables': lambda item: item.droppable(), 
+    'mineables': lambda item: item.is_a(Mineable), 
     'craftables': lambda item: item.recipe is not None, 
     'armors': lambda item: item.is_a(Armor), 
     'weapons': lambda item: item.is_a(Weapon), 

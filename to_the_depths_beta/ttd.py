@@ -180,49 +180,47 @@ class TTD_Bot(discord.Client, storage.Deconstructable):
     
     async def load(self): 
         with self.tuning_out(): 
-            async with self.pulse_presence(status=discord.Status.do_not_disturb, activity=discord.Game('loading save data')): 
-                self.game_data = text_load(self.storage_file, {}) 
-                
-                for channel_id, game_info in self.game_data.items(): 
-                    channel = self.get_channel(channel_id) 
+            self.game_data = text_load(self.storage_file, {}) 
+            
+            for channel_id, game_info in self.game_data.items(): 
+                channel = self.get_channel(channel_id) 
 
-                    if channel is not None: 
-                        self.game_data[channel_id] = reconstructed_game = self.reconstruct(game_info, self, channel)  
-                        
-                        print('{} in {}'.format(reconstructed_game, reconstructed_game.channel.name)) 
-                    else: 
-                        del self.game_data[channel_id] 
+                if channel is not None: 
+                    self.game_data[channel_id] = reconstructed_game = self.reconstruct(game_info, self, channel)  
+                    
+                    print('{} in {}'.format(reconstructed_game, reconstructed_game.channel.name)) 
+                else: 
+                    del self.game_data[channel_id] 
 
-                        print(f'channel with id {channel_id} is no longer accessible, game with data \
+                    print(f'channel with id {channel_id} is no longer accessible, game with data \
 {game_info} was deleted') 
-                
-                await self.do_on_turn_on() 
+            
+            await self.do_on_turn_on() 
 
-                await self.save() 
+            await self.save() 
 
-                print('successfully loaded') 
-                
-                self.needs_reloading = False
+            print('successfully loaded') 
+            
+            self.needs_reloading = False
     
     async def save(self, safely_shutdown=False): 
         with self.tuning_out(): 
-            async with self.pulse_presence(status=discord.Status.do_not_disturb, activity=discord.Game('saving')): 
-                deconstructed = {channel_id: game.deconstruct() for channel_id, game in self.game_data.items()} 
+            deconstructed = {channel_id: game.deconstruct() for channel_id, game in self.game_data.items()} 
 
-                '''
-                copied = {} 
+            '''
+            copied = {} 
 
-                for channel_id, game in self.game_data.items(): 
-                copied[channel_id] = game.deconstruct() 
-                ''' 
+            for channel_id, game in self.game_data.items(): 
+            copied[channel_id] = game.deconstruct() 
+            ''' 
 
-                text_dump(self.storage_file, deconstructed) 
+            text_dump(self.storage_file, deconstructed) 
 
-                text_dump(self.safely_shutdown_file, safely_shutdown) 
+            text_dump(self.safely_shutdown_file, safely_shutdown) 
 
-                print('successfully saved') 
+            print('successfully saved') 
 
-                self.needs_saving = False
+            self.needs_saving = False
 
     async def edit_tasks(self, amount):
         self.tasks += amount
