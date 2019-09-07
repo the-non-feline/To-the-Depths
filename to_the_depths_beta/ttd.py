@@ -58,7 +58,7 @@ def text_load(file, default):
 class TTD_Bot(discord.Client, storage.Deconstructable): 
     command_groups = ('other', 'battle', 'items', 'game', 'movement', 'helpful', 'player') 
 
-    command_filters = {name: lambda command: name in command.groups for name in command_groups} 
+    command_filters = {name: (lambda command: name in command.groups) for name in command_groups} 
 
     bot_commands = ttd_tools.Filterable(**command_filters) 
 
