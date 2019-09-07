@@ -3,6 +3,9 @@ from . import ttd_tools, catalog
 
 articles = ttd_tools.Filterable() 
 
+def rel_comms_field(group): 
+    return ('Related commands', f'Use the `{group}` filter when listing commands to display {group}-related commands')
+
 class Article_Meta(ttd_tools.GO_Meta): 
     append_to = articles
 
@@ -51,7 +54,8 @@ name of the action:
 Performing any of these actions instantly ends your battle turn. '''), \
     ('Surprise attack', f'At the start of your turn (not battle turn), at the same time that you lose oxygen, you roll the die. If \
 it lands on any of the numbers listed in your current level\'s "Surprise attack chance" stat, you are surprise attacked by a \
-random creature in your current level. You can also be surprise attacked by {catalog.Stonefish.name} while mining. ') 
+random creature in your current level. You can also be surprise attacked by {catalog.Stonefish.name} while mining. '), \
+    rel_comms_field('battle')  
     
 class Games(Article): 
     name = 'Games' 
@@ -71,7 +75,8 @@ command for details. '), \
 the game as a player, you must first `suicide`. This will place you in the queue, and then you can `leave`. \
 Note that you can only rejoin by being invited again. "), \
     ('Inviting other users', 'After a game has started, you can invite more users with the `invite` command. \
-Mention (ping) the users to invite them. You must be a player in the game to invite other people. ') 
+Mention (ping) the users to invite them. You must be a player in the game to invite other people. '), \
+    rel_comms_field('game') 
 
 class Turns(Article): 
     before_turn_stuff = (f"If you're not protected from pressure damage in your level, you will take \
@@ -102,13 +107,14 @@ first, in this order:
 After these, you're allowed to act (although if you get surprise attacked you\'ll be forced into a fight). '''), \
     ('What you can do during your turn', 'You can do basically anything during your turn. Note however that \
 certain actions (detailed in the next part) will use your "move". '), \
-    ('Your "move"', f'''The following actions use your move: 
+    ('Your "move"', f'''The following actions, known as "movements", use your move: 
 
 {move_using_str}
 
-This means you can only do one of these actions, once, per turn. '''), \
+This means you can only do one of these "movements", once, per turn. '''), \
     ('Ending your turn', "Ending your turn is done through the `endturn` command. Note that you can't end your \
-turn in the middle of a fight. Your turn also ends if you die. ") 
+turn in the middle of a fight. Your turn also ends if you die. "), \
+    rel_comms_field('movement') 
 
 class Items(Article): 
     obtainments = ('`craft`ing (explained below) ', 'Having another player `donate` to you', 'Most creatures \
@@ -136,7 +142,8 @@ the same item. For example, 2 {catalog.Suit.name}s won't both give you HP; only 
 different upon being used. Most items disappear after being used, although there are some exceptions. Some \
 items also have restrictions on when and how often you can use them. '), \
     ('Donating', 'You can donate items to another player using the `donate` command. Note that both players \
-must be in the same level to do this. ') 
+must be in the same level to do this. '), \
+    rel_comms_field('movement')  
 
 class Introduction(Article): 
     name = 'Introduction' 

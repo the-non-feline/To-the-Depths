@@ -863,7 +863,7 @@ async def use_args_check(self, report, author, item, amount='1'):
 async def use_item(self, report, player, item, amount='1'): 
     await player.use_item(report, item, amount) 
 
-@TTD_Bot.command('regen', 'Regens {} HP'.format(catalog.Player.regen_bonus), special_note='This command takes your move', groups=('player', 'movement'))  
+@TTD_Bot.command('regen', f'Regens {catalog.Player.regen_percent:.0%} of your max HP', special_note='This command takes your move', groups=('player', 'movement'))  
 @commands.requires_game
 @commands.requires_player
 @commands.requires_can_move

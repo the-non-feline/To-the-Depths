@@ -1962,7 +1962,7 @@ class Player(Commander, metaclass=Player_Meta, append=False):
     
     banned_str = format_iterable(banned_repr_gen(banned_chars), formatter='`{}`') 
     
-    regen_bonus = 20
+    regen_percent = 0.2
     failed_flee_punishment = 2
     oxygen_damage = 100
 
@@ -2348,19 +2348,6 @@ class Player(Commander, metaclass=Player_Meta, append=False):
             await self.fight_creature(report, surprise_attack=True) 
         else: 
             report.add('{} is not surprise attacked. '.format(self.name)) 
-    
-    @action
-    async def challenge_player(self, player):
-        challenge_prompt = report.add(
-            content='{0} challenges {1} to a PVP battle! React with {2} to accept and {3} to decline! This defaults to {3} if you dont react within 20 seconds. '.format(self.name, player.name, thumbs_up_emoji, thumbs_down_emoji))
-
-        reaction_emoji = await self.client.prompt_for_reaction(challenge_prompt, player.member_id, emojis=(thumbs_up_emoji, thumbs_down_emoji), timeout=20, default_emoji=thumbs_down_emoji)
-
-        if reaction_emoji == thumbs_up_emoji:
-            report.add('{} accepts the challenge! '.format(player.name))
-            await self.start_battle(player)
-        else:
-            report.add('{} declines the challenge. '.format(player.name)) 
 
         '''
         if self.pet is not None and self.pet.current_hp > 0: 
@@ -2897,9 +2884,11 @@ class Player(Commander, metaclass=Player_Meta, append=False):
     
     @action
     async def free_regen(self, report): 
-        self.current_hp += self.regen_bonus
+        hp_increase = self.max_hp * self.regen_percent
 
-        report.add("{}'s current HP increased by {}! ".format(self.name, self.regen_bonus)) 
+        self.current_hp += hp_increase
+
+        report.add("{}'s current HP increased by {}! ".format(self.name, hp_increase)) 
 
         await self.hp_changed(report) 
 
@@ -2957,7 +2946,7 @@ class Forager(Player):
     name = 'Forager'
     description = "Nothing escapes dis boi's eye" 
     specials = ('Guaranteed flee on battle turn in the Surface',) 
-    starting_multipliers = {All: 1.5,} 
+    starting_multipliers = {All: 2,} 
 
     @action
     async def attempt_flee(self, report): 
