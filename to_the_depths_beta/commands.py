@@ -12,6 +12,7 @@ class Command:
     name = '' 
     description = '' 
     special_note = None
+    groups = () 
     indefinite_args = () 
     required_args = () 
     optional_args = () 
@@ -59,6 +60,10 @@ class Command:
 
         if self.special_note is not None: 
             embed.add_field(name='Important note', value=self.special_note) 
+        
+        groups_str = ttd_tools.format_iterable(self.groups) or None
+
+        embed.add_field(name='Categories', value=groups_str) 
 
         '''
         embed.add_field(name='Usage - `[` and `]` denote optional arguments; `*` denotes "indefinite" arguments (that is, you can put as many arguments as you want there) ', value='`{}`'.format(self.syntax)) 

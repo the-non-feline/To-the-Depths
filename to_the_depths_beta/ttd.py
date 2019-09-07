@@ -56,7 +56,11 @@ def text_load(file, default):
         return default
 
 class TTD_Bot(discord.Client, storage.Deconstructable): 
-    bot_commands = ttd_tools.Filterable() 
+    command_groups = ('other', 'battle', 'items', 'game', 'movement', 'helpful', 'player') 
+
+    command_filters = {name: lambda command: name in command.groups for name in command_groups} 
+
+    bot_commands = ttd_tools.Filterable(command_filters) 
 
     categories = {
         'levels': catalog.levels, 
@@ -139,10 +143,11 @@ class TTD_Bot(discord.Client, storage.Deconstructable):
         return True
     
     @classmethod
-    def command(cls, name, description, special_note=None, indefinite_args=False, required_args=(), optional_args=(), special_args_check=default_special_args_check): 
+    def command(cls, name, description, special_note=None, groups=('other',), indefinite_args=False, required_args=(), optional_args=(), special_args_check=default_special_args_check): 
         _name = name
         _description = description
         _special_note = special_note
+        _groups = groups
         _indefinite_args = indefinite_args
         _required_args = required_args
         _optional_args = optional_args
@@ -156,6 +161,7 @@ class TTD_Bot(discord.Client, storage.Deconstructable):
                 name = _name
                 description = _description
                 special_note = _special_note
+                groups = _groups
                 indefinite_args = _indefinite_args
                 required_args = _required_args
                 optional_args = _optional_args
@@ -556,7 +562,7 @@ async def creategame_args_check(self, report, author, *mentions):
     else: 
         return True
 
-@TTD_Bot.command('creategame', 'Creates a new game in the current channel, and invites all mentioned people plus the sender into the game', indefinite_args=True, optional_args=('mentions',), special_args_check=creategame_args_check) 
+@TTD_Bot.command('creategame', 'Creates a new game in the current channel, and invites all mentioned people plus the sender into the game', groups=('game',), indefinite_args=True, optional_args=('mentions',), special_args_check=creategame_args_check) 
 @commands.requires_no_game
 @commands.modifying
 async def create_game(self, report, author, *mentions): 
@@ -574,7 +580,7 @@ async def create_game(self, report, author, *mentions):
     else: 
         report.add('Games cannot be created in DM channels. ') 
 
-@TTD_Bot.command('invite', 'Invites all mentioned people into the game', indefinite_args=True, required_args=('mentions',), special_args_check=creategame_args_check) 
+@TTD_Bot.command('invite', 'Invites all mentioned people into the game', groups=('game',), indefinite_args=True, required_args=('mentions',), special_args_check=creategame_args_check) 
 @commands.requires_game
 @commands.requires_player
 @commands.action
@@ -591,45 +597,45 @@ async def enter_args_check(self, report, author, class_choice):
     else: 
         report.add(f'{author.mention}, argument `class` must be a player class. Type `{self.prefix(report.channel)}{display_topics.name} classes` to see a list of all valid player classes. ') 
 
-@TTD_Bot.command('enter', 'Enters the game as a player with the specified class', required_args=('class',), special_args_check=enter_args_check) 
+@TTD_Bot.command('enter', 'Enters the game as a player with the specified class', groups=('game',), required_args=('class',), special_args_check=enter_args_check) 
 @commands.requires_no_player
 @commands.modifying
 async def enter_game(self, report, game, author, class_choice): 
     await game.add_player(report, author, class_choice) 
 
-@TTD_Bot.command('start', 'Starts the game') 
+@TTD_Bot.command('start', 'Starts the game', groups=('game',)) 
 @commands.requires_game
 @commands.requires_player
 @commands.modifying
 async def start_game(self, report, player): 
     await player.start_game(report) 
 
-@TTD_Bot.command('leave', "Leaves the game's **queue**", special_note="To leave the game's players list use `suicide` instead") 
+@TTD_Bot.command('leave', "Leaves the game's **queue**", special_note="To leave the game's players list use `suicide` instead", groups=('game',)) 
 @commands.requires_game
 @commands.modifying
 async def leave_game(self, report, game, author): 
     await game.remove_member(report, author) 
 
-@TTD_Bot.command('viewgame', 'Displays info on the current game') 
+@TTD_Bot.command('viewgame', 'Displays info on the current game', groups=('game',)) 
 @commands.requires_game
 async def display_game(self, report, game, author): 
     report.add(game.stats_embed()) 
 
-@TTD_Bot.command('suicide', 'Commits suicide') 
+@TTD_Bot.command('suicide', 'Commits suicide', groups=('player',)) 
 @commands.requires_game
 @commands.requires_player
 @commands.requires_uo_game_turn
 async def suicide(self, report, player): 
     await player.suicide(report) 
 
-@TTD_Bot.command('endturn', 'Ends your game turn') 
+@TTD_Bot.command('endturn', 'Ends your game turn', groups=('game',)) 
 @commands.requires_game
 @commands.requires_player
 @commands.requires_o_game_turn
 async def end_turn(self, report, player): 
     await player.end_turn(report) 
 
-@TTD_Bot.command('viewstats', "Without mentions, displays your own player's stats. With mentions, displays the stats of all mentioned people's players. ", indefinite_args=True, optional_args=('mentions',), special_args_check=creategame_args_check) 
+@TTD_Bot.command('viewstats', "Without mentions, displays your own player's stats. With mentions, displays the stats of all mentioned people's players. ", groups=('player',), indefinite_args=True, optional_args=('mentions',), special_args_check=creategame_args_check) 
 @commands.requires_game
 async def display_players(self, report, game, author, *mentions): 
     if len(mentions) > 0: 
@@ -645,7 +651,7 @@ async def display_players(self, report, game, author, *mentions):
         else: 
             report.add('{} is not in this game. '.format(member.mention)) 
 
-@TTD_Bot.command('viewitems', "Without mentions, displays your own player's items. With mentions, displays the items of all mentioned people's players. ", indefinite_args=True, optional_args=('mentions',), special_args_check=creategame_args_check) 
+@TTD_Bot.command('viewitems', "Without mentions, displays your own player's items. With mentions, displays the items of all mentioned people's players. ", groups=('player', 'items'), indefinite_args=True, optional_args=('mentions',), special_args_check=creategame_args_check) 
 @commands.requires_game
 async def display_items(self, report, game, author, *mentions): 
     if len(mentions) > 0: 
@@ -661,7 +667,7 @@ async def display_items(self, report, game, author, *mentions):
         else: 
             report.add('{} is not in this game. '.format(member.mention)) 
 
-@TTD_Bot.command('viewenemy', "Without mentions, displays your own opponent's stats. With mentions, displays the stats of the opponents of all mentioned people's players. ", indefinite_args=True, optional_args=('mentions',), special_args_check=creategame_args_check) 
+@TTD_Bot.command('viewenemy', "Without mentions, displays your own opponent's stats. With mentions, displays the stats of the opponents of all mentioned people's players. ", groups=('battle',), indefinite_args=True, optional_args=('mentions',), special_args_check=creategame_args_check) 
 @commands.requires_game
 async def display_enemies(self, report, game, author, *mentions): 
     if len(mentions) > 0: 
@@ -688,7 +694,7 @@ async def gather_args_check(self, report, author, item):
     else: 
         report.add('{}, argument `item` must be a gatherable item. '.format(author.mention)) 
 
-@TTD_Bot.command('gather', 'Attempts to gather the specified item', special_note='This command takes your move', required_args=('item',), special_args_check=gather_args_check) 
+@TTD_Bot.command('gather', 'Attempts to gather the specified item', special_note='This command takes your move', groups=('items', 'movement'), required_args=('item',), special_args_check=gather_args_check) 
 @commands.requires_game
 @commands.requires_player
 @commands.requires_can_move
@@ -707,10 +713,7 @@ async def help_args_check(self, report, author, *topics):
 
 @TTD_Bot.command('help', f'Without arguments, displays help on the `{help_articles.Introduction.name}` guide. With arguments, displays help on all specified topics. ', 
                  special_note="Use the `list` command to view a list of all the valid help entries (look it up with this command for more "
-                              "info on how to use it). If you just "
-                              "wanted to find out "
-                              "what all the "
-                              "commands for this bot are, use the `list` command with `commands` as the category. Don't forget the prefix! ", 
+                              "info on how to use it). ", groups=('helpful',), 
                  indefinite_args=True, 
                  optional_args=(
             'topics',), 
@@ -767,7 +770,7 @@ special_note=f'''Valid categories and filters for each category are:
 {category_filters_str}
 
 Filters stack; specifying multiple filters means listing entries that pass **all** of them. ''', 
-indefinite_args=True, required_args=('category',), optional_args=('filters',), 
+groups=('helpful',), indefinite_args=True, required_args=('category',), optional_args=('filters',), 
                  special_args_check=list_args_check) 
 async def display_topics(self, report, author, category, *filters): 
     help_categories = self.help_categories(report.channel) 
@@ -811,7 +814,7 @@ async def announce(self, report, author):
             else: 
                 print('{} has no messageable channels'.format(guild.name)) 
 
-@TTD_Bot.command('fight', 'Starts a battle with a random creature from your current level', special_note='This command takes your move') 
+@TTD_Bot.command('fight', 'Starts a battle with a random creature from your current level', special_note='This command takes your move', groups=('battle', 'movement')) 
 @commands.requires_game
 @commands.requires_player
 @commands.requires_can_move
@@ -824,7 +827,7 @@ async def coinflip_args_check(self, report, author, side):
     else: 
         report.add('{}, argument `side` can only be `heads` or `tails`. '.format(author.mention)) 
 
-@TTD_Bot.command('call', 'Call a side in a coin flip to decide who gets the next battle turn', required_args=('side',), special_args_check=coinflip_args_check) 
+@TTD_Bot.command('call', 'Call a side in a coin flip to decide who gets the next battle turn', groups=('battle',), required_args=('side',), special_args_check=coinflip_args_check) 
 @commands.requires_game
 @commands.requires_player
 @commands.requires_neither_battle_turn
@@ -832,7 +835,7 @@ async def coinflip_args_check(self, report, author, side):
 async def battle_call(self, report, player, side): 
     await player.battle_call(report, side) 
 
-@TTD_Bot.command('attack', 'Attacks your opponent', special_note='This command takes your battle turn') 
+@TTD_Bot.command('attack', 'Attacks your opponent', special_note='This command takes your battle turn', groups=('battle',)) 
 @commands.requires_game
 @commands.requires_player
 @commands.requires_battle_turn
@@ -852,7 +855,7 @@ async def use_args_check(self, report, author, item, amount='1'):
         report.add('{}, argument `item` must be a usable item. '.format(author.mention)) 
 
 @TTD_Bot.command('use', 'Uses the specified amount of the specified item', special_note='The amount can be auto-decided based on the item if amount is set to '
-                        '`auto`. Omitting the amount makes it default to 1. ', required_args=('item',), optional_args=('amount',), 
+                        '`auto`. Omitting the amount makes it default to 1. ', groups=('items',), required_args=('item',), optional_args=('amount',), 
                  special_args_check=use_args_check) 
 @commands.requires_game
 @commands.requires_player
@@ -860,14 +863,14 @@ async def use_args_check(self, report, author, item, amount='1'):
 async def use_item(self, report, player, item, amount='1'): 
     await player.use_item(report, item, amount) 
 
-@TTD_Bot.command('regen', 'Regens {} HP'.format(catalog.Player.regen_bonus), special_note='This command takes your move')  
+@TTD_Bot.command('regen', 'Regens {} HP'.format(catalog.Player.regen_bonus), special_note='This command takes your move', groups=('player', 'movement'))  
 @commands.requires_game
 @commands.requires_player
 @commands.requires_can_move
 async def free_regen(self, report, player): 
     await player.free_regen(report) 
 
-@TTD_Bot.command('flee', 'Attempts to flee the battle', special_note='This command takes your battle turn')  
+@TTD_Bot.command('flee', 'Attempts to flee the battle', special_note='This command takes your battle turn', groups=('battle',))  
 @commands.requires_game
 @commands.requires_player
 @commands.requires_battle_turn
@@ -913,7 +916,7 @@ async def donate_args_check(self, report, author, target, *to_donate):
                                                                                                                         'specified as `all` to '
                                                                                                                         'donate all you have of '
                                                                                                                         'that item. Example: `('
-                                                                                                                        'prefix)donate @bob coral 2 meat 5 sky_blade all` to donate 2 Coral, 5 Meat, and all your Sky Blades to bob. **Players must be in the same level to donate to each other.** ', indefinite_args=True, required_args=('target', 'item_1', 'amount_1'), optional_args=('item_2', 'amount_2', '...'), special_args_check=donate_args_check) 
+                                                                                                                        'prefix)donate @bob coral 2 meat 5 sky_blade all` to donate 2 Coral, 5 Meat, and all your Sky Blades to bob. **Players must be in the same level to donate to each other.** ', groups=('items',), indefinite_args=True, required_args=('target', 'item_1', 'amount_1'), optional_args=('item_2', 'amount_2', '...'), special_args_check=donate_args_check) 
 @commands.requires_game
 @commands.requires_player
 @commands.requires_uo_game_turn
@@ -952,7 +955,7 @@ async def donate(self, report, player, target, *to_donate):
     else: 
         report.add('{} cannot donate to {} because they are not in this game. '.format(player.name, mention.mention)) 
 
-@TTD_Bot.command('setname', "Without an argument, brings up a prompt to change your player's name. With an argument, changes your player's name to the argument. ", optional_args=('name',), special_args_check=catalog.Player.setname_args_check) 
+@TTD_Bot.command('setname', "Without an argument, brings up a prompt to change your player's name. With an argument, changes your player's name to the argument. ", groups=('player',), optional_args=('name',), special_args_check=catalog.Player.setname_args_check) 
 @commands.requires_game
 @commands.requires_player
 @commands.modifying
@@ -975,7 +978,7 @@ async def diver_move(self, report, player, direction):
     else: 
         await regular_move(self, report, player, direction) 
 
-@TTD_Bot.command('move', 'Moves `up` or `down` a level', special_note='This command takes your move (Diver ability exception) ', required_args=('direction',), special_args_check=move_args_check) 
+@TTD_Bot.command('move', 'Moves `up` or `down` a level', special_note='This command takes your move (Diver ability exception) ', groups=('movement',), required_args=('direction',), special_args_check=move_args_check) 
 @commands.requires_game
 @commands.requires_player
 @commands.requires_o_game_turn
@@ -995,7 +998,7 @@ async def craft_args_check(self, report, author, item, amount):
     else: 
         return True
 
-@TTD_Bot.command('craft', 'Crafts the specified amount of the specified item', special_note='This command takes your move', required_args=('item', ' \
+@TTD_Bot.command('craft', 'Crafts the specified amount of the specified item', special_note='This command takes your move', groups=('items', 'movement'), required_args=('item', ' \
                                                                                                                                          ''amount'), 
                  special_args_check=craft_args_check) 
 @commands.requires_game
@@ -1009,7 +1012,7 @@ async def craft(self, report, player, item, amount):
                                                                                                         'takes your battle turn. '
                                                                                                         'Dragging a creature cuts its '
                                                                                                         'drops by {}x (rounding down). '.format(
-    catalog.Creature.dragged_drops_penalty), 
+    catalog.Creature.dragged_drops_penalty), groups=('battle',), 
                                                                                                         required_args=('direction',), 
                  special_args_check=move_args_check) 
 @commands.requires_game
@@ -1033,7 +1036,8 @@ async def mine_args_check(self, report, author, item, side):
 
 @TTD_Bot.command('mine', 'Attempts to mine the specified item, calling the specified side', special_note=f'A {catalog.Shovel.name} or '
                                                                                                          f'{catalog.Big_Shovel.name} is required to '
-                                                                                                         f'mine. This command also takes your move. ', required_args=('item', 'side'), special_args_check=mine_args_check) 
+                                                                                                         f'mine. This command also takes your move. ', 
+groups=('items', 'movement'), required_args=('item', 'side'), special_args_check=mine_args_check) 
 @commands.requires_game
 @commands.requires_player
 @commands.requires_can_move
@@ -1047,7 +1051,8 @@ async def mine(self, report, player, item, side):
 
 @TTD_Bot.command('regenshield', f"Fully regenerates your player's shield, at the cost of {catalog.Watt.name}", 
                  special_note=f'The {catalog.Watt.name} cost to regen your shield is the sum of the {catalog.Watt.name} costs of all your shields. '
-                              f'The {catalog.Watt.name} cost of any shield item can be viewed by looking it up with the `help` command. ') 
+                              f'The {catalog.Watt.name} cost of any shield item can be viewed by looking it up with the `help` command. ', 
+groups=('player', 'items')) 
 @commands.requires_game
 @commands.requires_player
 @commands.requires_uo_game_turn
