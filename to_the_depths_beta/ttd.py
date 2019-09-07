@@ -101,7 +101,7 @@ class TTD_Bot(discord.Client, storage.Deconstructable):
         return self.default_prefix
     
     def channel_commands(self, channel): 
-        return ttd_tools.Filterable((command(self, channel) for command in self.bot_commands)) 
+        return ttd_tools.Filterable((command(self, channel) for command in self.bot_commands), **self.command_filters) 
     
     @classmethod
     def bare_categories(cls): 
