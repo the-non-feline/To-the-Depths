@@ -18,7 +18,7 @@ class Deconstructable(metaclass=D_Meta):
 
     @staticmethod
     def reconstruct(to_reconstruct, *args, **kwargs): 
-        import to_the_depths_beta
+        import to_the_depths
         from . import catalog, game
         
         class_name = to_reconstruct['class_name'] 
