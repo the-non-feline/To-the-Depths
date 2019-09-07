@@ -143,7 +143,7 @@ different upon being used. Most items disappear after being used, although there
 items also have restrictions on when and how often you can use them. '), \
     ('Donating', 'You can donate items to another player using the `donate` command. Note that both players \
 must be in the same level to do this. '), \
-    rel_comms_field('movement')  
+    rel_comms_field('items')  
 
 class Introduction(Article): 
     name = 'Introduction' 
