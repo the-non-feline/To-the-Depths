@@ -60,7 +60,7 @@ class TTD_Bot(discord.Client, storage.Deconstructable):
 
     command_filters = {name: lambda command: name in command.groups for name in command_groups} 
 
-    bot_commands = ttd_tools.Filterable(command_filters) 
+    bot_commands = ttd_tools.Filterable(**command_filters) 
 
     categories = {
         'levels': catalog.levels, 
