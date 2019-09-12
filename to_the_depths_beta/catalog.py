@@ -3216,18 +3216,19 @@ of dealing extra damage", f'Entities with fire damage take {Entity.per_round_fir
         await target.get_burned(report, fire_damage) 
 
 class Shock(Player): 
-    electric_damage_percent = 0.3
+    self_charge = 0.2
+    target_charge = 0.3
+    leech_percent = 1
     stunning_crit_bonus = 1
     
     name = 'Shock' 
     description = 'Zap' 
-    specials = (f'Each regular hit adds {electric_damage_percent:.0%} of {name}\'s attack damage add "potential damage" to the \
-target. This damage is not immediately dealt. ', f'{name}\'s crits do no damage by themselves. Instead, critting adds {electric_damage_percent:.0%} of {name}\'s attack \
-damage as "potential damage". Following this, the target\'s shield is instantly broken, all the target\'s stored potential damage \
-is dealt as actual damage, and the target is stunned, allowing {name} to get another free hit! ', f"When stunning, \
-{name}'s crit chance temporarily increases by {stunning_crit_bonus}. ", 
-f'When {name} misses, it deals the crit effect to itself. ', f"{name} can't miss when hitting a stunned \
-target. Likewise, the enemy can't miss when hitting a stunned {name}. ") 
+    specials = (f'Each hit {name} gets, regardless of type, adds {self_charge:.0%} of its damage as electric \
+potential damage to itself, and {target_charge:.0%} to the victim', f"Crit combines the victim and \
+{name}'s own potential damage and deals it all to the victim. {name} then gains {leech_percent:.0%} of the \
+dealt damage as HP. ", f"Critting stuns the target; {name}'s own crit chance is temporarily raised by \
+{stunning_crit_bonus} while stunning", 'Potential damage, when released, bypasses shield', 
+f"When {name} misses, it deals its own stored damage to itself, and gets stunned") 
     starting_hp = 110
     starting_attack = 30
 
@@ -3260,29 +3261,24 @@ target. Likewise, the enemy can't miss when hitting a stunned {name}. ")
         
         return Stunning() 
     
-    @action
-    async def charge_target(self, report, target): 
-        electric_damage = self.current_attack * self.electric_damage_percent
-        
+    @staticmethod
+    async def charge_thing(report, target, electric_damage): 
         target.electric_damage += electric_damage
         
         report.add(f'{target.name} received {electric_damage} potential damage! ') 
         report.add(f'{target.name} has {target.electric_damage} potential damage now! ') 
     
     @action
-    async def release_charge(self, report, target): 
-        if target.current_shield > 0: 
-            target.current_shield = 0
-            
-            report.add(f"{target.name}'s shield is instantly broken! ") 
-            
-            await target.shield_changed(report) 
-        
-        report.add(f'{target.name} takes all its built-up potential damage! ') 
-        
-        await target.take_damage(report, target.electric_damage) 
-        
-        target.electric_damage = 0
+    async def charge(self, report, target): 
+        self_charge = self.current_attack * self.self_charge
+        target_charge = self.current_attack * self.target_charge
+
+        await self.charge_thing(report, self, self_charge) 
+        await self.charge_thing(report, target, target_charge) 
+    
+    @staticmethod
+    async def release_charge(report, target, damage): 
+        await target.take_damage(report, damage, penetrates=('shield',)) 
     
     @staticmethod
     async def stun_target(report, stunner, stunned): 
@@ -3293,11 +3289,13 @@ target. Likewise, the enemy can't miss when hitting a stunned {name}. ")
     
     @action
     async def on_miss(self, report, target): 
-        report.add(f'{self.name} crits themselves! ') 
+        report.add(f'{self.name} self-damages! ') 
         
-        await self.charge_target(report, self) 
-        
-        await self.release_charge(report, self) 
+        damage = self.electric_damage
+
+        await self.release_charge(report, self, damage) 
+
+        self.electric_damage = 0
 
         await self.stun_target(report, target, self) 
         
@@ -3309,19 +3307,33 @@ target. Likewise, the enemy can't miss when hitting a stunned {name}. ")
         ''' 
     
     @action
-    async def on_regular_hit(self, report, target): 
-        await Player.on_regular_hit(self, report, target) 
-        
-        await self.charge_target(report, target) 
-    
-    @action
     async def on_crit(self, report, target): 
-        await self.charge_target(report, target) 
-        
-        await self.release_charge(report, target) 
+        report.add(f"{self.name} releases {target.name}'s and its own combined electric damage! ") 
+
+        damage = self.electric_damage + target.electric_damage
+
+        await self.release_charge(report, target, damage) 
+
+        self.electric_damage = 0
+        target.electric_damage = 0
+
+        to_regen = damage * self.leech_percent
+
+        self.current_hp += to_regen
+
+        report.add(f'{self.name} regenerates {self.leech_percent:.0%} of the released damage as HP! ') 
+
+        await self.hp_changed(report) 
 
         async with self.stunning(report): 
             await self.stun_target(report, self, target) 
+    
+    @action
+    async def switch_hit(self, report, target): 
+        async with target.acting(report): 
+            await self.charge(report, target) 
+
+            await Commander.switch_hit(self, report, target) 
         
         '''
         with target.stunned(): 
