@@ -2,7 +2,7 @@
 
 This is the framework for a Discord bot to play the card game To the Depths, available as a Python package.
 
-**Installation: ** 
+**Installation:** 
 
 Installing the stable version: 
 `py -m pip install --upgrade git+https://github.com/the-non-feline/To-the-Depths` 
@@ -12,7 +12,7 @@ Installing the beta version:
 
 Installing the stable version installs a package named `to_the_depths`; installing the beta version installs a package called `to_the_depths_beta` 
 
-**Running the bot: ** 
+**Running the bot:** 
 
 First, import the `TTD_Bot` class from the package: `from PACKAGE_NAME import TTD_Bot`, where `PACKAGE_NAME` is the name of the package you installed (see above). 
 
