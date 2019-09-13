@@ -468,7 +468,7 @@ class TTD_Bot(discord.Client, storage.Deconstructable):
         extension = '{}, react to this message with '.format(mention) 
 
         if emojis is not None: 
-            options = ttd_tools.format_iterable(emojis, formatter='`{}`') 
+            options = ttd_tools.format_iterable(emojis) 
 
             extension += 'one of the following: {}. '.format(options) 
         else: 
