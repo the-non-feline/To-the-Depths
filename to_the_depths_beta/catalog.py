@@ -1339,23 +1339,9 @@ class Entity(Events):
     def final_miss(self, enemy):
         return self.miss + enemy.enemy_miss_bonus
 
-        '''
-        total_miss = tuple(self.miss) + tuple(enemy.enemy_miss_bonus)
-        final_miss = tuple(chance for chance in range(1, 7) if chance in total_miss and -chance not in total_miss)
-  
-        return final_miss
-        '''
-
     # noinspection PyUnreachableCode
     def final_crit(self, enemy):
         return self.crit - enemy.enemy_crit_bonus
-
-        '''
-        total_crit = tuple(self.crit) + tuple(enemy.enemy_crit_bonus)
-        final_crit = tuple(chance for chance in range(1, 7) if chance in total_crit and -chance not in total_crit)
-  
-        return final_crit
-        ''' 
     
     @action
     async def on_shutdown(self, report): 
@@ -2632,9 +2618,18 @@ class Player(Commander, metaclass=Player_Meta, append=False):
     
     @action
     async def suicide(self, report): 
-        self.dead = True
+        report.add(f'{self.mention}, suiciding will instantly kill your character. You will lose \
+**everything** that you have on you right now. ARE YOU SURE? ') 
 
-        report.add('{} suicides! '.format(self.name)) 
+        emoji = self.client.prompt_for_reaction(report, self.member_id, emojis=(thumbs_up_emoji, 
+thumbs_down_emoji), timeout=10, default_emoji=thumbs_down_emoji) 
+
+        if emoji == thumbs_down_emoji: 
+            self.dead = True
+
+            report.add('{} suicides! '.format(self.name)) 
+        else: 
+            report.add(f"{self.name} didn't suicide. ") 
 
     @action
     async def receive_items(self, report, to_receive):
@@ -3197,12 +3192,13 @@ goes above {fb_threshold:.0%} HP. ',)
 
 class Scorch(Player): 
     crit_fire_percent = 1
+    aura_percent = 0.2
     
     name = 'Scorch' 
     description = 'Fiery' 
     specials = (f"Crits apply {crit_fire_percent:.0%} of {name}'s attack damage as fire damage to the victim instead \
-of dealing extra damage", f'Entities with fire damage take {Entity.per_round_fire_percent:.0%} of it \
-(rounded up) as actual damage each battle round')  
+of dealing extra damage", f'Surrounded by an aura of fire that inflicts {aura_percent:.0%} of its attack \
+damage on its opponent each battle round (penetrates shield) ') 
     starting_attack = 20
     starting_crit = 5
     
@@ -3210,10 +3206,20 @@ of dealing extra damage", f'Entities with fire damage take {Entity.per_round_fir
     async def on_crit(self, report, target): 
         await self.deal_damage(report, target, self.current_attack, crit=True, penetrates=self.penetrates, bleeds=self.bleeds) 
 
-        fire_damage = self.current_attack * self.crit_fire_percent
+        fire_damage = self.current_attack * self.crit_fire_percent * target.enemy_attack_multiplier
 
         report.add(f'{self.name} adds {self.crit_fire_percent:.0%} of its attack damage as fire damage to {target.name}! ') 
         await target.get_burned(report, fire_damage) 
+    
+    @action
+    async def on_battle_round_start(self, report): 
+        await Player.on_battle_round_start(self, report) 
+
+        aura_damage = self.current_attack * self.aura_percent * self.enemy.enemy_attack_multiplier
+
+        report.add(f"{self.enemy.name} is damaged by {self.name}'s fiery aura! ") 
+
+        await self.enemy.take_damage(report, aura_damage, penetrates=('shield',))
 
 class Shock(Player): 
     self_charge = 0.2
@@ -3270,8 +3276,8 @@ f"When {name} misses, it deals its own stored damage to itself, and gets stunned
     
     @action
     async def charge(self, report, target): 
-        self_charge = self.current_attack * self.self_charge
-        target_charge = self.current_attack * self.target_charge
+        self_charge = self.current_attack * self.self_charge * self.enemy_attack_multiplier
+        target_charge = self.current_attack * self.target_charge * target.enemy_attack_multiplier
 
         await self.charge_thing(report, self, self_charge) 
         await self.charge_thing(report, target, target_charge) 
@@ -3333,7 +3339,7 @@ f"When {name} misses, it deals its own stored damage to itself, and gets stunned
         async with target.acting(report): 
             await self.charge(report, target) 
 
-            await Commander.switch_hit(self, report, target) 
+            await Player.switch_hit(self, report, target) 
         
         '''
         with target.stunned(): 
