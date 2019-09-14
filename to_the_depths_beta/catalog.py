@@ -3199,7 +3199,7 @@ class Scorch(Player):
     specials = (f"Crits apply {crit_fire_percent:.0%} of {name}'s attack damage as fire damage to the victim instead \
 of dealing extra damage", f'Surrounded by an aura of fire that inflicts {aura_percent:.0%} of its attack \
 damage on its opponent each battle round (penetrates shield) ') 
-    starting_attack = 20
+    starting_attack = 30
     starting_crit = 5
     
     @action
@@ -3235,7 +3235,7 @@ potential damage to itself, and {target_charge:.0%} to the victim', f"Crit combi
 dealt damage as HP. ", f"Critting stuns the target; {name}'s own crit chance is temporarily raised by \
 {stunning_crit_bonus} while stunning", 'Potential damage, when released, bypasses shield', 
 f"When {name} misses, it deals its own stored damage to itself, and gets stunned") 
-    starting_hp = 110
+    starting_hp = 100
     starting_attack = 30
 
     def __init__(self, client, channel, game, member_id=None): 
