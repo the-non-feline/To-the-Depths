@@ -3200,7 +3200,7 @@ class Scorch(Player):
 of dealing extra damage", f'Surrounded by an aura of fire that inflicts {aura_percent:.0%} of its attack \
 damage on its opponent each battle round (penetrates shield) ') 
     starting_attack = 30
-    starting_crit = 5
+    starting_crit = 4
     
     @action
     async def on_crit(self, report, target): 
