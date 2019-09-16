@@ -145,8 +145,8 @@ items also have restrictions on when and how often you can use them. '), \
 must be in the same level to do this. '), \
     rel_comms_field('items')  
 
-class Introduction(Article): 
-    name = 'Introduction' 
+class Commands(Article): 
+    name = 'Commands' 
     description = 'To the Depths is a game played through interacting with this Discord bot. This section \
 covers the basics of using this bot. ' 
 
@@ -175,6 +175,11 @@ can react with.
 
 Note that most prompts have a time limit. If you don't respond within the time limit, the bot will just \
 choose a default response for you. '''), \
-    ('Additional help', 'Additional help is provided through the `help` and `list` commands. `help` \
-displays useful info on all topics that you specified in its arguments. `list` is used to list valid \
-topic names. ') 
+    ('Additional help', 'You can look up any command with `help` command for details about using it') 
+
+class Introduction(Article): 
+    name = 'Introduction' 
+    description = 'Welcome, new player! This section will give you a basic overview of the game. ' 
+    
+    fields = ('Basic mechanics', 'To the Depths is a turn-based game. Each player chooses one of the various player classes, \
+and take turns doing stuff. There
