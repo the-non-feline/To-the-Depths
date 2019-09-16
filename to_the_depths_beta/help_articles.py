@@ -182,4 +182,10 @@ class Introduction(Article):
     description = 'Welcome, new player! This section will give you a basic overview of the game. ' 
     
     fields = ('Basic mechanics', 'To the Depths is a turn-based game. Each player chooses one of the various player classes, \
-and take turns doing stuff. There
+and take turns doing stuff. The game centers on fighting NPC creatures and obtaining items to upgrade your player. '), \
+    ('Fighting', f'The majority of items are gained through fightng and defeating NPC creatures. Fighting centers around the \
+mechanic of "battle turns". Only one side can have the battle turn at any given \
+time, and only the side with the battle turn can act. Battle turns are decided through random coin flips. A fight lasts until \
+one side flees or dies. More information in the `{Fighting}` guide. '), \
+    ('Items', f'Items enhance your player. Some will upgrade your player upon being received, while some must be used to give an \
+effect. More information in the `{Items}` guide. ') 
