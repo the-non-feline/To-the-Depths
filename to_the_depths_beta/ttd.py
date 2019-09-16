@@ -76,7 +76,7 @@ class TTD_Bot(discord.Client, storage.Deconstructable):
     #print(catalog.classes) 
     #print(catalog.creatures) 
 
-    def __init__(self, storage_file, logs_file, safely_shutdown_file, owner_id, default_prefix): 
+    def __init__(self, storage_file, safely_shutdown_file, owner_id, default_prefix, logs_file=sys.stdout): 
         self.owner_id = owner_id
         self.default_prefix = default_prefix
         self.tasks = 0
@@ -93,6 +93,8 @@ class TTD_Bot(discord.Client, storage.Deconstructable):
         self.game_data = {} 
 
         self.client = self
+        
+        sys.stderr = sys.stdout = self.logs_file
 
         discord.Client.__init__(self, status=self.status, activity=self.current_activity) 
         storage.Deconstructable.__init__(self) 
