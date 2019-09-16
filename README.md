@@ -18,7 +18,7 @@ First, import the `TTD_Bot` class from the package: `from PACKAGE_NAME import TT
 
 Second, instantiate `TTD_Bot` like so: `bot = TTD_Bot(STORAGE_FILE, STORAGE_FILE_2, OWNER_ID, DEFAULT_PREFIX)`. `STORAGE_FILE` and `STORAGE_FILE_2` are used for storing game data and **must** be opened in `r+` mode. **All of these files must be text file objects.** `OWNER_ID` is an `int`, the id of the Discord user who the bot will recognize as its "owner". This will be the only user allowed to run commands such as `announce` and `shutdown`. Finally, `DEFAULT_PREFIX` is a `str`, the default prefix that the bot will use on servers where no prefix has been specified. 
 
-An additional file, for logging use, can be passed to the bot through the optional `logs_file` argument. This must also be a text file. 
+Optionally, you can specify a file for logging through the `logs_file` argument; not specifying this will make the bot log to the terminal window. 
 
 Finally, start the bot: `bot.run(TOKEN)`, where `TOKEN` is your bot user's token. 
 
