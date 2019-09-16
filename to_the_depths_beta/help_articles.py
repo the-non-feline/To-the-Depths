@@ -177,6 +177,25 @@ Note that most prompts have a time limit. If you don't respond within the time l
 choose a default response for you. '''), \
     ('Additional help', 'You can look up any command with `help` command for details about using it') 
 
+class HP(Article): 
+    name = 'HP/Damage' 
+    description = 'This section explains HP and damage mechanics' 
+    
+    fields = ('HP', 'Everything that can participate in a fight has HP. When it reaches 0, the thing dies. '), \
+    ('The "HP Multiplier" stat', 'Your HP is multiplied by this when you start. Furthermore, any bonuses to your max HP are \
+multiplied by this stat. '), \
+    ('Shield', 'Shield, when it is not empty, will always take damage before HP, unless the damage bypasses shield. The shield \
+will absorb all overkill to itself, unless the damage bleeds shield. '), \
+    ('Damage', 'Damage decreases HP. It can have special properties, such as penetrating (completely bypasses the specified \
+thing) or bleeding (overkilling damage carries over onto the next thing) '), \
+    ('The "Attack Multiplier" stat', 'Like the "HP Multiplier" stat but applies to attack damage instead'), \
+    ('The "Enemy Attack Multiplier" stat', 'When an entity is taking damage from an enemy attack, the incoming damage is \
+multiplied by this stat to determine how much damage they actually take. Damage from sources other than attacks (such as pressure \
+or oxygen damage) is not affected by this stat. '), \
+    ('Electric and fire damage', 'These types of damage are not dealt immediately, rather they are dealt after a delay. Damage \
+dealt from the release of such damage counts as damage from the environment, rather than damage from attacks, and as such are not \
+affected by the "Enemy Attack Multiplier" stat. However, the stat **does** affect how much damage gets "built-up" each time. '), \
+
 class Introduction(Article): 
     name = 'Introduction' 
     description = 'Welcome, new player! This section will give you a basic overview of the game. ' 
