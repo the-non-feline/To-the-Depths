@@ -3352,13 +3352,11 @@ creatures_filters = {
     'drops-stuff': lambda creature: len(creature.starting_drops) > 0, 
 } 
 
-for level in Levels: 
-    def level_filter(creature): 
-        _level = level
+def gen_filter(level): 
+    return lambda creature: creature in level.creatures
 
-        return creature in _level.creatures
-    
-    creatures_filters[level.name.lower()] = level_filter
+for level in Levels: 
+    creatures_filters[level.name.lower()] = gen_filter(level) 
 
 creatures = ttd_tools.Filterable(**creatures_filters) 
 
