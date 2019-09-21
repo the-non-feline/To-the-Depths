@@ -3353,7 +3353,7 @@ creatures_filters = {
 } 
 
 for level in Levels: 
-    creatures_filters[level.name] = lambda creature: creature in level.creatures 
+    creatures_filters[level.name.lower()] = lambda creature: creature in level.creatures 
 
 creatures = ttd_tools.Filterable(**creatures_filters) 
 
