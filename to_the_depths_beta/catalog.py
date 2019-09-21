@@ -3352,6 +3352,9 @@ creatures_filters = {
     'drops-stuff': lambda creature: len(creature.starting_drops) > 0, 
 } 
 
+for level in Levels: 
+    creatures_filters[level.name] = lambda creature: creature in level.creatures 
+
 creatures = ttd_tools.Filterable(**creatures_filters) 
 
 class Creature_Meta(ttd_tools.GO_Meta): 

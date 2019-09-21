@@ -202,9 +202,20 @@ class Introduction(Article):
     
     fields = ('Basic mechanics', 'To the Depths is a turn-based game. Each player chooses one of the various player classes, \
 and take turns doing stuff. The game centers on fighting NPC creatures and obtaining items to upgrade your player. '), \
+    ('Turns', f'See the `{Turns.name}` guide for details on the turn-based nature of this game'), \
     ('Fighting', f'The majority of items are gained through fightng and defeating NPC creatures. Fighting centers around the \
 mechanic of "battle turns". Only one side can have the battle turn at any given \
 time, and only the side with the battle turn can act. Battle turns are decided through random coin flips. A fight lasts until \
-one side flees or dies. More information in the `{Fighting}` guide. '), \
+one side flees or dies. More information in the `{Fighting.name}` guide. '), \
     ('Items', f'Items enhance your player. Some will upgrade your player upon being received, while some must be used to give an \
-effect. More information in the `{Items}` guide. ') 
+effect. More information in the `{Items.name}` guide. '), \
+    ('Using the bot', f'See the `{Commands.name}` guide for help on using this bot. '), \
+    ('Using the `help` and `list` commands', 'These two commands are crucial to understanding the game. The \
+`help` command is the command you will use to look up information regarding everything in the game. To use, \
+simply type the command followed by the names of the things you want to look up. The `list` command is used \
+to "list" stuff so you know they exist. This command must be followed by a category and unlimited, optional \
+filter names. **The category for listing other guides like this is `guides`**. '), \
+    ('Some other tips', f"When in a level deeper than the {catalog.Levels.Surface.name}, keep track of your \
+oxygen; it would be very frustrating to die because you didn't. Also remember to look at your HP before \
+throwing yourself into a fight. The `viewstats` command is your friend here. Also **please don't forget \
+to end your turn with `endturn` command**. It is very annoying to other people when you forget. ") 
