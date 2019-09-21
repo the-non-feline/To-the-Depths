@@ -3354,7 +3354,9 @@ creatures_filters = {
 
 for level in Levels: 
     def level_filter(creature): 
-        return creature in level.creatures
+        _level = level
+
+        return creature in _level.creatures
     
     creatures_filters[level.name.lower()] = level_filter
 
