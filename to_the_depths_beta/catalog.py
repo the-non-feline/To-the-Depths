@@ -3050,32 +3050,8 @@ class Diver(Player):
     name = 'Diver'
     description = 'Dives so something'
     specials = (
-        'Is always allowed {} additional level beyond listed'.format(allowed_level_deviation), 'Can move between levels {} time(s) without using '
-                                                                                                'its move'.format(free_moves), 'Can move levels and drag their opponents with them on their battle turn') 
-    
-    def __init__(self, client, channel, game, member_id=None): 
-        self.current_free_moves = self.free_moves
-
-        Player.__init__(self, client, channel, game, member_id=member_id) 
-    
-    @action
-    async def on_shutdown(self, report): 
-        self.current_free_moves -= self.free_moves
-
-        await Player.on_shutdown(self, report) 
-    
-    @action
-    async def on_turn_on(self, report): 
-        self.current_free_moves += self.free_moves
-
-        await Player.on_turn_on(self, report) 
-    
-    def stats_embed(self): 
-        embed = Player.stats_embed(self) 
-
-        embed.add_field(name='Free moves', value='{}/{}'.format(self.current_free_moves, self.free_moves)) 
-
-        return embed
+        f'Is always allowed {allowed_level_deviation} additional level beyond listed', 
+        'Can move levels and drag their opponents with them on their battle turn') 
 
     # noinspection PyUnusedLocal
     def level_deviation(self): 
@@ -3083,22 +3059,10 @@ class Diver(Player):
     
     @action
     async def handle_move_method(self, report, method): 
-        if method == 'free': 
-            self.current_free_moves -= 1
-
-            report.add('{} used up a free move. '.format(self.name)) 
-        elif method == 'drag': 
+        if method == 'drag': 
             await self.end_battle_turn(report) 
         else: 
             await Player.handle_move_method(self, report, method) 
-    
-    @action
-    async def regain_move(self, report): 
-        await Player.regain_move(self, report) 
-
-        self.current_free_moves = self.free_moves
-
-        report.add('{} regained their {} free moves! '.format(self.name, self.free_moves)) 
     
     @action
     async def on_win_coinflip(self, report): 
