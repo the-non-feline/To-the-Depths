@@ -3309,6 +3309,7 @@ f"When {name} misses, it deals its own stored damage to itself, and gets stunned
 
 creatures_filters = {
     'drops-stuff': lambda creature: len(creature.starting_drops) > 0, 
+    'passive': lambda creature: creature.passive, 
 } 
 
 def gen_filter(level): 
