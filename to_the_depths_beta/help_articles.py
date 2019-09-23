@@ -28,8 +28,7 @@ class Fighting(Article):
     ('flee', f'Try to flee the fight. You will flip a coin, and if you win the flip, \
 you successfully flee. However, if you lose, your opponent will get to attack you {catalog.Player.failed_flee_punishment} times, \
 for free! {catalog.Forager.name} is exempt from this coin flip in the {catalog.Levels.Surface.name}. '), \
-    ('drag', f'Can only be used by the {catalog.Diver.name} class. Drag your opponent one level `up` or `down`. Note that doing \
-this on a creature will result in it only dropping half its normal drops on death. ') 
+    ('drag', f'Can only be used by the {catalog.Diver.name} class. Drag your opponent one level `up` or `down`. ') 
     bt_actions_gen = (f'`{action_name}` - {action_description}' for action_name, action_description in bt_actions) 
     bt_actions_str = ttd_tools.make_list(bt_actions_gen) 
     
