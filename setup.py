@@ -1,3 +1,3 @@
 import setuptools
 
-setuptools.setup(name='To the Depths Beta', version='0.47.7', packages=('to_the_depths_beta',), install_requires=('discord.py',), setup_requires=('discord.py',)) 
+setuptools.setup(name='To the Depths Beta', version='0.47.8', packages=('to_the_depths_beta',), install_requires=('discord.py',), setup_requires=('discord.py',)) 
