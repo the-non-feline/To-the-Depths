@@ -2292,11 +2292,6 @@ class Player(Commander, metaclass=Player_Meta, append=False):
 
                 await self.enemy.on_global_event(report, 'move_levels', movement) 
 
-                if self.enemy.is_a(Creature) and not self.enemy.dragged: 
-                    self.enemy.dragged = True
-                    
-                    await self.enemy.cut_drops(report) 
-
             await self.handle_move_method(report, method) 
     
     @action
@@ -3331,39 +3326,13 @@ class Creature(Commander, metaclass=Creature_Meta, append=False):
     starting_drops = () 
     stars = 0
     passive = False
-    dragged_drops_penalty = 2
         # self.level = self.calculate_level_multipliers() 
-    
-    def __init__(self, client, channel, enemy, current_level=None): 
-        self.drops = [[item, amount] for item, amount in self.starting_drops] 
-        self.dragged = False
-
-        Commander.__init__(self, client, channel, enemy=enemy, current_level=current_level) 
-    
-    async def on_turn_on(self, report): 
-        self.drops = [[item, amount] for item, amount in self.starting_drops] 
-
-        if self.dragged: 
-            await self.cut_drops(None) 
-        
-        await Commander.on_turn_on(self, report) 
     
     @staticmethod
     def modify_deconstructed(deconstructed): 
         del deconstructed['enemy'] 
         
-        deconstructed['drops'] = [[item.__name__, amount] for item, amount in deconstructed['drops']] 
-
         Commander.modify_deconstructed(deconstructed) 
-        
-        print(deconstructed) 
-    
-    def reconstruct_next(self): 
-        self.drops = [[eval(item_name), amount] for item_name, amount in self.drops] 
-        
-        Commander.reconstruct_next(self) 
-        
-        print(self.__dict__) 
     
     @classmethod
     def gen_help_specials(cls, specials): 
@@ -3401,17 +3370,7 @@ class Creature(Commander, metaclass=Creature_Meta, append=False):
 
         embed.add_field(name='Stars', value=self.stars) 
 
-        embed.add_field(name='Was dragged', value=self.dragged) 
-
-        return embed
-    
-    @action
-    async def cut_drops(self, report): 
-        for pair in self.drops: 
-            pair[1] = int(pair[1] / self.dragged_drops_penalty) 
-        
-        if report is not None: 
-            report.add("{}'s drops were cut by a factor of {} due to being dragged! ".format(self.name, self.dragged_drops_penalty)) 
+        return embed 
     
     @action
     async def drop_stuff(self, report, drop_to): 
