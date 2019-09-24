@@ -970,25 +970,12 @@ async def move_args_check(self, report, author, direction):
     else: 
         return True
 
-@commands.requires_can_move
-async def regular_move(self, report, player, direction): 
-    await player.move_levels(report, direction, 'regular') 
-
-async def diver_move(self, report, player, direction): 
-    if player.current_free_moves > 0: 
-        await player.move_levels(report, direction, 'free') 
-    else: 
-        await regular_move(self, report, player, direction) 
-
-@TTD_Bot.command('move', 'Moves `up` or `down` a level', special_note='This command takes your move (Diver ability exception) ', groups=('movement',), required_args=('direction',), special_args_check=move_args_check) 
+@TTD_Bot.command('move', 'Moves `up` or `down` a level', special_note='This command takes your move', groups=('movement',), required_args=('direction',), special_args_check=move_args_check) 
 @commands.requires_game
 @commands.requires_player
-@commands.requires_o_game_turn
+@commands.requires_can_move
 async def move(self, report, player, direction): 
-    if player.is_a(catalog.Diver): 
-        await diver_move(self, report, player, direction) 
-    else: 
-        await regular_move(self, report, player, direction) 
+    await regular_move(self, report, player, direction) 
 
 async def craft_args_check(self, report, author, item, amount): 
     target_item = ttd_tools.search(catalog.items, item) 
