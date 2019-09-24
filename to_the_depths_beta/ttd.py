@@ -996,14 +996,9 @@ async def craft_args_check(self, report, author, item, amount):
 async def craft(self, report, player, item, amount): 
     await player.craft(report, item, amount) 
 
-@TTD_Bot.command('drag', 'Moves either `up` or `down`, dragging your opponent with you. ', special_note='This command is only usable '
-                                                                                                        'by the Diver class. It also '
-                                                                                                        'takes your battle turn. '
-                                                                                                        'Dragging a creature cuts its '
-                                                                                                        'drops by {}x (rounding down). '.format(
-    catalog.Creature.dragged_drops_penalty), groups=('battle',), 
-                                                                                                        required_args=('direction',), 
-                 special_args_check=move_args_check) 
+@TTD_Bot.command('drag', 'Moves either `up` or `down`, dragging your opponent with you. ', 
+                 special_note=f'This command is only usable by the {catalog.Diver.name} class. It also takes your battle turn. ', 
+                 groups=('battle',), required_args=('direction',), special_args_check=move_args_check) 
 @commands.requires_game
 @commands.requires_player
 @commands.requires_battle_turn
