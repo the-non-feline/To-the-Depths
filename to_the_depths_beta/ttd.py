@@ -355,7 +355,8 @@ class TTD_Bot(discord.Client, storage.Deconstructable):
                         
                         await owner_dm.send(content='`{}` in channel `{}` in server `{}`: `{}`'.format(typ.__name__, self.channel, self.channel.guild if hasattr(self.channel, 'guild') else None, value)) 
                         
-                        self.report.add('{}, something went wrong while running your command. A team of highly trained {}s has been dispatched to deal with this situation. The bot might also try to restore save data from the last save point. '.format(self.author.mention, monkey_head_emoji)) 
+                        self.report.add('{}, something went wrong while running your command. A team of \
+highly trained {}s has been dispatched to deal with this situation. '.format(self.author.mention, monkey_head_emoji)) 
                     
                     await self.report.send_self() 
                 finally: 
