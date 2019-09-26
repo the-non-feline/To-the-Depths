@@ -1050,7 +1050,7 @@ async def regen_shield(self, report, player):
 async def delete_game(self, report, game, author): 
     report.add(f'{author.mention}, are you sure you want to delete this game? ') 
 
-    emoji = await self.prompt_for_reaction(report, author.member_id, emojis=(thumbs_up_emoji, 
+    emoji = await self.prompt_for_reaction(report, author.id, emojis=(thumbs_up_emoji, 
 thumbs_down_emoji), timeout=10, default_emoji=thumbs_down_emoji) 
 
     if emoji == thumbs_up_emoji: 
