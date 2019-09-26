@@ -975,7 +975,7 @@ async def move_args_check(self, report, author, direction):
 @commands.requires_player
 @commands.requires_can_move
 async def move(self, report, player, direction): 
-    await regular_move(self, report, player, direction) 
+    await player.change_levels(report, direction) 
 
 async def craft_args_check(self, report, author, item, amount): 
     target_item = ttd_tools.search(catalog.items, item) 
@@ -1004,7 +1004,7 @@ async def craft(self, report, player, item, amount):
 @commands.requires_battle_turn
 async def drag(self, report, player, direction): 
     if player.is_a(catalog.Diver): 
-        await player.move_levels(report, direction, 'drag') 
+        await player.drag(report, direction) 
     else: 
         report.add("{} can't drag because they aren't a Diver. ".format(player.name)) 
 
