@@ -2956,6 +2956,7 @@ class Berserker(Player):
     name = 'Berserker'
     description = 'REE REE TRIGGER TRIGGER REE REEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE' 
     specials = ('Attack increases with HP lost at a {} to 1 ratio'.format(scaling_factor), 'Berserker Mode - when {0} dies against a living opponent, it goes for a final hit directly to the opponent. If this hit kills the opponent, {0} is revived with 1 HP! '.format(name)) 
+    starting_miss = 2 
     
     def __init__(self, client, channel, game, member_id=None): 
         self.can_revive = True
