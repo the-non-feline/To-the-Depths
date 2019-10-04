@@ -2784,9 +2784,7 @@ thumbs_down_emoji), timeout=10, default_emoji=thumbs_down_emoji)
                 else: 
                     final_to_donate[item] -= amount
         
-        for item, amount in final_to_donate.items(): 
-            if amount == 0: 
-                del final_to_donate[item] 
+        final_to_donate = {item: amount for item, amount in final_to_donate.items() if amount > 0} 
         
         if len(final_to_donate) > 0: 
             donation_list = [[item, amount] for item, amount in final_to_donate.items()] 
