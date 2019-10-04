@@ -2769,7 +2769,7 @@ thumbs_down_emoji), timeout=10, default_emoji=thumbs_down_emoji)
         if len(lacking_items) == 0: 
             await self.donate(report, target, final_to_donate) 
         else: 
-            lacking_str = format_iterable(lacking_items, formatter='{0[1]} {0[0].name}(s) ') 
+            lacking_str = format_iterable(lacking_items, formatter='{0[1]} {0[0].name}(s)') 
 
             report.add(f'{self.name} lacks {lacking_str} to perform the donation. ') 
         
@@ -2783,6 +2783,10 @@ thumbs_down_emoji), timeout=10, default_emoji=thumbs_down_emoji)
                     del final_to_donate[item] 
                 else: 
                     final_to_donate[item] -= amount
+        
+        for item, amount in final_to_donate.items(): 
+            if amount == 0: 
+                del final_to_donate[item] 
         
         if len(final_to_donate) > 0: 
             donation_list = [[item, amount] for item, amount in final_to_donate.items()] 
