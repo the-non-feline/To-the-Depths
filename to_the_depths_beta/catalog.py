@@ -2740,35 +2740,56 @@ thumbs_down_emoji), timeout=10, default_emoji=thumbs_down_emoji)
     @action
     async def donate(self, report, target, to_donate): 
         async with target.acting(report): 
-            final_to_donate = [] 
+            await self.lose_items(report, to_donate) 
+            await target.receive_items(report, to_donate) 
 
-            for entry in to_donate: 
-                item, amount = entry
+            report.add('{} successfully donated to {}. '.format(self.name, target.name)) 
+    
+    @action
+    async def whitelist_donate(self, report, target, to_donate): 
+        final_to_donate = [] 
 
-                if type(amount) is str: 
-                    inv_item, inv_amount = self.get_inv_entry(item) 
+        for item, amount in to_donate: 
+            if type(amount) is str: 
+                inv_item, inv_amount = self.get_inv_entry(item) 
 
-                    if inv_amount > 0: 
-                        actual_amount = inv_amount
-                    else: 
-                        report.add("Skipping {} because {} doesn't have any. ".format(item.name, self.name)) 
-
-                        continue
+                if inv_amount > 0: 
+                    actual_amount = inv_amount
                 else: 
-                    actual_amount = amount
-                
-                final_to_donate.append((item, actual_amount)) 
-            
-            lacking_items = self.lacks_items(final_to_donate) 
+                    report.add("Skipping {} because {} doesn't have any. ".format(item.name, self.name)) 
 
-            if len(lacking_items) == 0: 
-                await self.lose_items(report, final_to_donate) 
-                await target.receive_items(report, final_to_donate) 
-
-                report.add('{} successfully donated to {}. '.format(self.name, target.name)) 
+                    continue
             else: 
-                for lacking_item, lacking_amount in lacking_items: 
-                    report.add('{} lacks {} {}(s) to perform the donation. '.format(self.name, lacking_amount, lacking_item.name)) 
+                actual_amount = amount
+            
+            final_to_donate.append((item, actual_amount)) 
+        
+        lacking_items = self.lacks_items(final_to_donate) 
+
+        if len(lacking_items) == 0: 
+            await self.donate(report, target, final_to_donate) 
+        else: 
+            lacking_str = format_iterable(lacking_items, formatter='{0[1]} {0[0].name}(s) ') 
+
+            report.add(f'{self.name} lacks {lacking_str} to perform the donation. ') 
+        
+    @action
+    async def blacklist_donate(self, report, target, blacklist): 
+        final_to_donate = {item.__class__: amount for item, amount in self.items} 
+
+        for item, amount in blacklist.items(): 
+            if item in final_to_donate: 
+                if type(amount) is str or final_to_donate[item] <= amount: 
+                    del final_to_donate[item] 
+                else: 
+                    final_to_donate[item] -= amount
+        
+        if len(final_to_donate) > 0: 
+            donation_list = [[item, amount] for item, amount in final_to_donate.items()] 
+
+            await self.donate(report, target, donation_list) 
+        else: 
+            report.add(f'There is nothing to donate. ') 
     
     @action
     async def switch_attack(self, report): 
@@ -3183,8 +3204,8 @@ damage on its opponent each battle round (penetrates shield) ')
         await self.enemy.take_damage(report, aura_damage, penetrates=('shield',))
 
 class Shock(Player): 
-    self_charge = 0.2
-    target_charge = 0.3
+    self_charge = 0.1
+    target_charge = 0.4
     leech_percent = 1
     stunning_crit_bonus = 1
     

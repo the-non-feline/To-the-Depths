@@ -910,51 +910,84 @@ async def donate_args_check(self, report, author, target, *to_donate):
         else: 
             return True
 
+def convert_donation(specified): 
+    items = specified[::2] 
+    amounts = specified[1::2] 
+
+    items = (ttd_tools.search(catalog.items, item) for item in items) 
+    
+    donation_dict = {} 
+    
+    for item, amount in zip(items, amounts): 
+        if not amount.isnumeric(): 
+            donation_dict[item] = amount
+        elif item not in donation_dict: 
+            donation_dict[item] = int(amount) 
+        elif type(donation_dict[item]) is int: 
+            donation_dict[item] += int(amount) 
+    
+    return donation_dict
+
 @TTD_Bot.command('donate', 'Donates the specified amounts of the specified items to the mentioned player', special_note='Items and amounts to '
-                                                                                                                        'donate are specified in '
-                                                                                                                        'pairs of item and amount, '
-                                                                                                                        'like this: `item amount`. '
-                                                                                                                        'Each pair is separated by '
-                                                                                                                        'a space. Amounts can be '
-                                                                                                                        'specified as `all` to '
-                                                                                                                        'donate all you have of '
-                                                                                                                        'that item. Example: `('
-                                                                                                                        'prefix)donate @bob coral 2 meat 5 sky_blade all` to donate 2 Coral, 5 Meat, and all your Sky Blades to bob. **Players must be in the same level to donate to each other.** ', groups=('items',), indefinite_args=True, required_args=('target', 'item_1', 'amount_1'), optional_args=('item_2', 'amount_2', '...'), special_args_check=donate_args_check) 
+'donate are specified in '
+'pairs of item and amount, '
+'like this: `item amount`. '
+'Each pair is separated by '
+'a space. Amounts can be '
+'specified as `all` to '
+'donate all you have of '
+'that item. Example: `('
+'prefix)donate @bob coral 2 meat 5 sky_blade all` to donate 2 Coral, 5 Meat, and all your Sky Blades to bob. \
+**Players must be in the same level to donate to each other.** ', groups=('items',), indefinite_args=True, 
+required_args=('target', 'item_1', 'amount_1'), optional_args=('item_2', 'amount_2', '...'), special_args_check=donate_args_check) 
 @commands.requires_game
 @commands.requires_player
 @commands.requires_uo_game_turn
-async def donate(self, report, player, target, *to_donate): 
-    items = to_donate[::2] 
-    amounts = to_donate[1::2] 
-
+async def whitelist_donate(self, report, player, target, *to_donate): 
     mentions = self.decode_mentions(report, (target,)) 
     
     mention = tuple(mentions)[0] 
     
     donate_to = player.game.get_player(mention.id) 
+
     if donate_to is not None: 
         if donate_to is player: 
             report.add("Unlike {}, {} is smart and realizes there's no point in trying to donate to themselves. ".format(player.mention, player.name)) 
         elif player.current_level != donate_to.current_level: 
             report.add("{0} can't donate to {1} because they're in different levels; {0} is in the {2} while {1} is in the {3}. ".format(player.name, donate_to.name, player.current_level.name, donate_to.current_level.name)) 
         else: 
-            items = (ttd_tools.search(catalog.items, item) for item in items) 
-            
-            donation_dict = {} 
-            
-            for item, amount in zip(items, amounts): 
-                if not amount.isnumeric(): 
-                    donation_dict[item] = amount
-                elif item not in donation_dict: 
-                    donation_dict[item] = int(amount) 
-                elif type(donation_dict[item]) is int: 
-                    donation_dict[item] += int(amount) 
+            donation_dict = convert_donation(to_donate)  
             
             donation = [(item, amount) for item, amount in donation_dict.items()] 
             
             print(donation) 
 
-            await player.donate(report, donate_to, donation) 
+            await player.whitelist_donate(report, donate_to, donation) 
+    else: 
+        report.add('{} cannot donate to {} because they are not in this game. '.format(player.name, mention.mention)) 
+
+@TTD_Bot.command('donateall', 'Donates everything except for the specified items', special_note=f'Same restrictions and usage as \
+`{whitelist_donate}` command', groups=('items',), indefinite_args=True, optional_args=('target', 'item_1', 'amount_1', 'item_2', 'amount_2'), 
+special_args_check=donate_args_check) 
+@commands.requires_game
+@commands.requires_player
+@commands.requires_uo_game_turn
+async def blacklist_donate(self, report, player, target, *blacklist): 
+    mentions = self.decode_mentions(report, (target,)) 
+
+    mention = tuple(mentions)[0] 
+
+    donate_to = player.game.get_player(mention.id) 
+
+    if donate_to is not None: 
+        if donate_to is player: 
+            report.add("Unlike {}, {} is smart and realizes there's no point in trying to donate to themselves. ".format(player.mention, player.name)) 
+        elif player.current_level != donate_to.current_level: 
+            report.add("{0} can't donate to {1} because they're in different levels; {0} is in the {2} while {1} is in the {3}. ".format(player.name, donate_to.name, player.current_level.name, donate_to.current_level.name)) 
+        else: 
+            blacklist_dict = convert_donation(blacklist) 
+
+            await player.blacklist_donate(report, donate_to, blacklist_dict) 
     else: 
         report.add('{} cannot donate to {} because they are not in this game. '.format(player.name, mention.mention)) 
 
