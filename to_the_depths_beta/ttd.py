@@ -967,7 +967,7 @@ async def whitelist_donate(self, report, player, target, *to_donate):
         report.add('{} cannot donate to {} because they are not in this game. '.format(player.name, mention.mention)) 
 
 @TTD_Bot.command('donateall', 'Donates everything except for the specified items', special_note=f'Same restrictions and usage as \
-`{whitelist_donate}` command', groups=('items',), indefinite_args=True, optional_args=('target', 'item_1', 'amount_1', 'item_2', 'amount_2'), 
+`{whitelist_donate.name}` command', groups=('items',), indefinite_args=True, optional_args=('target', 'item_1', 'amount_1', 'item_2', 'amount_2', '...'), 
 special_args_check=donate_args_check) 
 @commands.requires_game
 @commands.requires_player
