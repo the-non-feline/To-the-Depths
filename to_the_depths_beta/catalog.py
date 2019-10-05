@@ -2777,7 +2777,7 @@ thumbs_down_emoji), timeout=10, default_emoji=thumbs_down_emoji)
             await self.donate(report, target, donation_list) 
 
             reproduce_list = [(item.name.replace(' ', '_'), amount) for item, amount in donation_list] 
-            reproduce_str = format_iterable(reproduce_list, formatter='{0[0].name} {0[1]}', sep=' ') 
+            reproduce_str = format_iterable(reproduce_list, formatter='{0[0]} {0[1]}', sep=' ') 
 
             report.add(f'The items list to reproduce this donation is `{reproduce_str}`. ') 
         else: 
