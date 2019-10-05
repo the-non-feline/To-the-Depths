@@ -404,22 +404,6 @@ class Item(Events, metaclass=Item_Meta, append=False):
     async def remove_bonuses(self, report, amount): 
         pass
 
-    '''
-    async def on_craft(self, target, amount): 
-      final_recipe = [[recipe_item, recipe_amount * amount] for recipe_item, recipe_amount in self.recipe] 
-  
-      lacking_items = target.lacks_items(final_recipe) 
-  
-      if len(lacking_items) > 0: 
-        for item, number in lacking_items: 
-          report.add('{} lacks {} {}(s) to craft {} {}(s) '.format(target.name, number, item.name, amount, self.name)) 
-      else: 
-        target.can_move = False
-  
-        await target.lose_items(final_recipe) 
-        await target.receive_items([self.__class__, amount]) 
-    ''' 
-
     async def on_use(self, report, amount): 
         pass
     
@@ -2734,8 +2718,9 @@ thumbs_down_emoji), timeout=10, default_emoji=thumbs_down_emoji)
 
             await self.use_move(report) 
         else: 
-            for lacking_item, lacking_amount in lacking_items: 
-                report.add('{} lacks {} {}(s) to craft {} {}(s). '.format(self.name, lacking_amount, lacking_item.name, amount, item.name)) 
+            lacking_str = format_iterable(lacking_items, formatter='{0[1]} {0[0].name}(s)') 
+
+            report.add(f'{self.name} lacks {lacking_str} to craft {amount} {item.name}(s). ') 
     
     @action
     async def donate(self, report, target, to_donate): 
@@ -2790,6 +2775,11 @@ thumbs_down_emoji), timeout=10, default_emoji=thumbs_down_emoji)
             donation_list = [[item, amount] for item, amount in final_to_donate.items()] 
 
             await self.donate(report, target, donation_list) 
+
+            reproduce_list = [(item.name.replace(' ', '_'), amount) for item, amount in donation_list] 
+            reproduce_str = format_iterable(reproduce_list, formatter='{0[0].name} {0[1]}', sep=' ') 
+
+            report.add(f'The items list to reproduce this donation is `{reproduce_str}`. ') 
         else: 
             report.add(f'There is nothing to donate. ') 
     
@@ -2928,8 +2918,9 @@ thumbs_down_emoji), timeout=10, default_emoji=thumbs_down_emoji)
                 
                 await self.lose_items(report, ((Watt, watt_cost),)) 
             else: 
-                for lacking_item, lacking_amount in lacking_items: 
-                    report.add(f'{self.name} lacks {lacking_amount} {lacking_item.name}(s) to regen their shield. ') 
+                lacking_str = format_iterable(lacking_items, formatter='{0[1]} {0[0].name}(s)') 
+
+                report.add(f'{self.name} lacks {lacking_str} to regen their shield. ') 
         else: 
             report.add(f"{self.name} doesn't have a shield to regen. ") 
     
