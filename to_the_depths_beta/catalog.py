@@ -2969,7 +2969,10 @@ class Berserker(Player):
     scaling_factor = 1
     name = 'Berserker'
     description = 'REE REE TRIGGER TRIGGER REE REEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE' 
-    specials = ('Attack increases with HP lost at a {} to 1 ratio'.format(scaling_factor), 'Berserker Mode - when {0} dies against a living opponent, it goes for a final hit directly to the opponent. If this hit kills the opponent, {0} is revived with 1 HP! '.format(name)) 
+    specials = ('Attack increases with HP lost at a {} to 1 ratio'.format(scaling_factor), 'Berserker Mode - \
+when {0} dies against a living opponent, it goes for a final hit directly to the opponent. If this hit kills \
+the opponent, {0} is revived with 1 HP! '.format(name), f'After using Berserker Mode, {name} must regen to \
+full HP before they can use it again') 
     starting_miss = 2 
     
     def __init__(self, client, channel, game, member_id=None): 
@@ -3183,7 +3186,7 @@ damage on its opponent each battle round (penetrates shield) ')
 
         fire_damage = self.current_attack * self.crit_fire_percent * target.enemy_attack_multiplier
 
-        report.add(f'{self.name} adds {self.crit_fire_percent:.0%} of its attack damage as fire damage to {target.name}! ') 
+        report.add(f'{self.name} adds {self.crit_fire_percent:.0%} of their attack damage as fire damage to {target.name}! ') 
         await target.get_burned(report, fire_damage) 
     
     @action
@@ -3289,7 +3292,7 @@ f"When {name} misses, it deals its own stored damage to itself, and gets stunned
     
     @action
     async def on_crit(self, report, target): 
-        report.add(f"{self.name} releases {target.name}'s and its own combined electric damage! ") 
+        report.add(f"{self.name} releases {target.name}'s and their own combined electric damage! ") 
 
         damage = self.electric_damage + target.electric_damage
 
@@ -4052,7 +4055,7 @@ class C_Great_Diving_Minnow(Great_Diving_Minnow, Creature):
 
 class Reefback(Entity): 
     name = 'Reefback' 
-    description = 'Immensely powerful. Creatures like to hide behind it for protection. The {} itself, however, is peaceful and never engages in combat. '.format(name) 
+    description = 'Near-invincible, so creatures like to hide behind it for protection. The {} itself, however, is peaceful and never engages in combat. '.format(name) 
     starting_hp = float('inf') 
     starting_access_levels = (Levels.Middle,) 
 
