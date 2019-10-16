@@ -40,6 +40,22 @@ def subtract_lists(top, bottom):
 
     return difference
 
+def add_dicts(top, bottom, multiplier=1): 
+    total = top.copy() 
+
+    for key, value in bottom.values(): 
+        to_add = value * multiplier
+
+        if key in total: 
+            total[key] += to_add
+        else: 
+            total[key] = to_add
+    
+    return total
+
+def subtract_dicts(top, bottom): 
+    return add_dicts(top, bottom, multiplier=-1) 
+
 # for all the random needs
 # Die was honestly the best name i could think of
 class Die:
@@ -289,7 +305,7 @@ class Item(Events, metaclass=Item_Meta, append=False):
         dropped_by_list = [] 
 
         for creature in creatures: 
-            for item, amount in creature.drops: 
+            for item, amount in creature.starting_drops.items(): 
                 if item is cls: 
                     dropped_by_list.append(creature.name) 
         
@@ -1212,6 +1228,20 @@ class Classical_Freeze_Gun(Weapon):
     description = 'Classy' 
     recipe = (Platinum_Elixir, 1), (Steel, 5), (Iron, 6) 
 
+class Shark_Skin(Item): 
+    name = 'Shark Skin' 
+    description = 'Grates to the touch' 
+
+class Shark_Armor(Armor): 
+    hp_bonus = 30
+    retal_percent = 0.3
+
+    name = 'Shark Skin Armor' 
+    description = 'Painful to hit' 
+    effects = ('When wearer is attacked, will deal an extra {retal_percent:.0%} of the damage back to the \
+attacker',) 
+    recipe = (Shark_Skin, 1), (Meat, 20) 
+
 # noinspection PyTypeChecker
 class Entity(Events): 
     pd_slope = 20
@@ -1959,7 +1989,7 @@ class Player(Commander, metaclass=Player_Meta, append=False):
     starting_attack = 20
     starting_access_levels = (Levels.Surface,) 
     starting_oxygen = 5
-    starting_items = () 
+    starting_items = ((Shark_Skin, 1), (Meat, 20)) 
     starting_multipliers = {}
     starting_priority = 0
 
@@ -2187,6 +2217,17 @@ class Player(Commander, metaclass=Player_Meta, append=False):
             report.add('{}, argument `name` must not exceed {} characters or contain the following symbols: {}. '.format(author.mention, cls.name_limit, cls.banned_str)) 
         else: 
             return True
+    
+    @action
+    async def take_damage(self, report, damage, inflicter=None, penetrates=(), bleeds=(), crit=False): 
+        await Commander.take_damage(self, report, damage, inflicter=inflicter, penetrates=penetrates, bleeds=bleeds, crit=crit) 
+
+        if inflicter is not None and self.has_item(Shark_Armor): 
+            report.add(f"{inflicter.name} is hurt by {self.name}'s {Shark_Armor.name}! ") 
+
+            retal_damage = damage * Shark_Armor.retal_percent * inflicter.enemy_attack_multiplier
+
+            await inflicter.take_damage(report, retal_damage) 
 
     @action
     async def use_move(self, report): 
@@ -3327,7 +3368,7 @@ f"When {name} misses, it deals its own stored damage to itself, and gets stunned
         ''' 
 
 creatures_filters = {
-    'drops-stuff': lambda creature: len(creature.drops) > 0, 
+    'drops-stuff': lambda creature: len(creature.starting_drops) > 0, 
     'passive': lambda creature: creature.passive, 
 } 
 
@@ -3343,16 +3384,38 @@ class Creature_Meta(ttd_tools.GO_Meta):
     append_to = creatures
 
 class Creature(Commander, metaclass=Creature_Meta, append=False): 
-    drops = () 
+    starting_drops = {} 
     stars = 0
     passive = False
         # self.level = self.calculate_level_multipliers() 
     
+    def __init__(self, client, channel, enemy, current_level=None): 
+        self.drops = self.starting_drops.copy() 
+    
     @staticmethod
     def modify_deconstructed(deconstructed): 
         del deconstructed['enemy'] 
+
+        deconstructed['drops'] = {item.__name__: amount for item, amount in deconstructed['drops'].items()} 
         
         Commander.modify_deconstructed(deconstructed) 
+    
+    def reconstruct_next(self): 
+        self.drops = {eval(item_name): amount for item_name, amount in self.drops.items()} 
+
+        Commander.reconstruct_next(self) 
+    
+    @action
+    async def on_shutdown(self, report): 
+        self.drops = subtract_dicts(self.drops, self.starting_drops) 
+
+        await Commander.on_shutdown(self, report) 
+    
+    @action
+    async def on_turn_on(self, report): 
+        self.drops = add_dicts(self.drops, self.starting_drops) 
+
+        await Commander.on_turn_on(self, report) 
     
     @classmethod
     def gen_help_specials(cls, specials): 
@@ -3365,7 +3428,7 @@ class Creature(Commander, metaclass=Creature_Meta, append=False):
     def help_embed(cls): 
         embed = super(Creature, cls).help_embed() 
 
-        drops_gen = ('{} x{}'.format(item.name, amount) for item, amount in cls.drops) 
+        drops_gen = ('{} x{}'.format(item.name, amount) for item, amount in cls.starting_drops.items()) 
         drops_str = make_list(drops_gen) 
 
         embed.add_field(name='Drops', value=drops_str if len(drops_str) > 0 else 'Nothing', inline=False) 
@@ -3383,7 +3446,7 @@ class Creature(Commander, metaclass=Creature_Meta, append=False):
     def stats_embed(self): 
         embed = Commander.stats_embed(self) 
 
-        drops_gen = ('{} x{}'.format(item.name, amount) for item, amount in self.drops) 
+        drops_gen = ('{} x{}'.format(item.name, amount) for item, amount in self.drops.items()) 
         drops_str = make_list(drops_gen) 
         
         embed.add_field(name='Drops', value=drops_str if len(drops_str) > 0 else 'Nothing', inline=False) 
@@ -3394,7 +3457,9 @@ class Creature(Commander, metaclass=Creature_Meta, append=False):
     
     @action
     async def drop_stuff(self, report, drop_to): 
-        await drop_to.earn_items(report, self.drops) 
+        drops_list = [(item, amount) for item, amount in self.drops.items()] 
+
+        await drop_to.earn_items(report, drops_list) 
     
     @action
     async def on_death(self, report): 
@@ -3428,6 +3493,20 @@ class Creature(Commander, metaclass=Creature_Meta, append=False):
 
             await self.end_battle_turn(report) 
 
+pets = ttd_tools.Filterable() 
+
+class Pet_Meta(ttd_tools.GO_Meta): 
+    append_to = pets
+
+class Pet(Entity, metaclass=Pet_Meta, append=False): 
+    effects = () 
+    usages = () 
+
+    def __init__(self, client, channel, owner, current_level=None): 
+        self.owner = owner
+
+        Entity.__init__(self, client, channel, current_level=current_level) 
+
 class Trout(Entity):
     name = "Trout"
     description = "Food - not a cat"
@@ -3436,7 +3515,7 @@ class Trout(Entity):
     starting_access_levels = (Levels.Surface,) 
 
 class C_Trout(Trout, Creature): 
-    drops = ([Meat, 2],) 
+    starting_drops = {Meat: 2,} 
 
 class Ariel_Leviathan(Entity):
     name = "Ariel Leviathan"
@@ -3446,7 +3525,10 @@ class Ariel_Leviathan(Entity):
     starting_access_levels = (Levels.Surface,) 
 
 class C_Ariel_Leviathan(Ariel_Leviathan, Creature): 
-    drops = [Sky_Blade, 1], [Meat, 6] 
+    starting_drops = {
+        Sky_Blade: 1, 
+        Meat: 6, 
+    }
     passive = True
 
 class Saltwater_Croc(Entity):
@@ -3458,7 +3540,10 @@ class Saltwater_Croc(Entity):
     starting_access_levels = (Levels.Surface,) 
 
 class C_Saltwater_Croc(Saltwater_Croc, Creature): 
-    drops = [Scale, 1], [Meat, 5]
+    starting_drops = {
+        Scale: 1, 
+        Meat: 5, 
+    }
     passive = True
 
 class Tiger_Fish(Entity):
@@ -3487,7 +3572,7 @@ class Tiger_Fish(Entity):
         self.current_attack = former_attack
 
 class C_Tiger_Fish(Tiger_Fish, Creature): 
-    drops = ([Meat, 1],) 
+    starting_drops = {Meat: 5,}
 
 class Gar(Entity):
     name = "Gar"
@@ -3497,7 +3582,7 @@ class Gar(Entity):
     starting_access_levels = (Levels.Surface,) 
 
 class C_Gar(Gar, Creature): 
-    drops = ([Meat, 1],) 
+    starting_drops = {Meat: 4,} 
 
 class Turtle(Entity):
     name = 'Turtle'
@@ -3508,7 +3593,10 @@ class Turtle(Entity):
     starting_access_levels = (Levels.Surface,) 
 
 class C_Turtle(Turtle, Creature): 
-    drops = [Suit, 1], [Meat, 1] 
+    starting_drops = {
+        Suit: 1, 
+        Meat: 1, 
+    }
 
 class Piranha(Entity): 
     name = 'Piranha'
@@ -3520,7 +3608,8 @@ class Piranha(Entity):
 class C_Piranha(Piranha, Creature): 
     per_round_attack_increase = 20
     specials = Piranha.specials + ('Attack increases by {} every battle round'.format(per_round_attack_increase),) 
-    drops = ([Meat, 1],) 
+    starting_drops = {Meat: 1,} 
+    drops_scaling = {Meat: 2,} 
     
     def __init__(self, client, channel, enemy, current_level=None):
         self.elapsed_battle_rounds = 0
@@ -3535,6 +3624,11 @@ class C_Piranha(Piranha, Creature):
 
         self.base_attack -= attack_decrease
         self.current_attack -= attack_decrease
+
+        increased_drops = {item: amount * self.elapsed_battle_rounds for item, amount in 
+self.drops_scaling.items()} 
+
+        self.drops = subtract_dicts(self.drops, increased_drops) 
     
     @action
     async def on_turn_on(self, report): 
@@ -3544,6 +3638,11 @@ class C_Piranha(Piranha, Creature):
 
         self.base_attack += attack_increase
         self.current_attack += attack_increase
+
+        increased_drops = {item: amount * self.elapsed_battle_rounds for item, amount in 
+self.drops_scaling.items()} 
+
+        self.drops = add_dicts(self.drops, increased_drops) 
     
     @action
     async def on_battle_round_start(self, report):
@@ -3558,6 +3657,12 @@ class C_Piranha(Piranha, Creature):
 
         await self.attack_changed(report) 
 
+        drops_increase_str = format_iterable(self.drops_scaling.items(), formatter='{0[1]} {0[0].name}(s)') 
+
+        self.drops = add_dicts(self.drops, self.drops_scaling) 
+
+        report.add(f"{self.name}'s drops increased by {drops_increase_str}! ") 
+
         await Creature.on_battle_round_start(self, report) 
 
 
@@ -3569,7 +3674,7 @@ class Hatchet_Fish(Entity):
     starting_access_levels = (Levels.Surface,) 
 
 class C_Hatchet_Fish(Hatchet_Fish, Creature): 
-    drops = ([Hatchet_Fish_Corpse, 1],) 
+    starting_drops = {Hatchet_Fish_Corpse: 1,} 
 
 class Octofish(Entity):
     name = 'Octofish'
@@ -3579,7 +3684,7 @@ class Octofish(Entity):
     starting_access_levels = (Levels.Surface,) 
 
 class C_Octofish(Octofish, Creature): 
-    drops = ([Meat, 1],) 
+    starting_drops = {Meat: 3,} 
 
 class Big_Trout(Entity): 
     name = 'Big Trout'
@@ -3589,7 +3694,7 @@ class Big_Trout(Entity):
     starting_access_levels = (Levels.Surface,) 
 
 class C_Big_Trout(Big_Trout, Creature): 
-    drops = ([Meat, 4],) 
+    starting_drops = {Meat: 4,} 
 
 class Water_Bug(Entity): 
     starting_miss = 0
@@ -3711,7 +3816,10 @@ class Blue_Whale(Entity):
     starting_access_levels = (Levels.Middle,) 
 
 class C_Blue_Whale(Blue_Whale, Creature): 
-    drops = (Blubber, 1), (Meat, 8) 
+    starting_drops = {
+        Blubber: 1, 
+        Meat: 8, 
+    }
     passive = True
 
 class Great_White_Shark(Entity): 
@@ -3722,7 +3830,10 @@ class Great_White_Shark(Entity):
     starting_access_levels = (Levels.Middle,) 
 
 class C_Great_White_Shark(Great_White_Shark, Creature): 
-    drops = ((Meat, 10),) 
+    starting_drops = {
+        Shark_Skin: 1, 
+        Meat: 20, 
+    }
     passive = True
 
 class Albino_Tiger_Oscar(Entity): 
@@ -3733,7 +3844,10 @@ class Albino_Tiger_Oscar(Entity):
     starting_access_levels = (Levels.Middle,) 
 
 class C_Albino_Tiger_Oscar(Albino_Tiger_Oscar, Creature): 
-    drops = (Platinum_Elixir, 1), (Meat, 8) 
+    starting_drops = {
+        Platinum_Elixir: 1, 
+        Meat: 8, 
+    }
 
 class Giant_Lionfish(Entity): 
     revenge_damage = 60
@@ -3751,26 +3865,32 @@ class Giant_Lionfish(Entity):
 
         if inflicter is not None: 
             if crit: 
-                damage = self.revenge_damage * 2
+                revenge_damage = self.revenge_damage * 2
 
                 report.add('{} retaliates the crit with double damage! '.format(self.name)) 
             else: 
-                damage = self.revenge_damage
+                revenge_damage = self.revenge_damage
             
-            await self.deal_damage(report, inflicter, damage, penetrates=('shield',))  
+            await self.deal_damage(report, inflicter, revenge_damage, penetrates=('shield',))  
 
 class C_Giant_Lionfish(Giant_Lionfish, Creature): 
-    drops = (Platinum_Elixir, 1), (Meat, 12) 
+    starting_drops = {
+        Platinum_Elixir: 1, 
+        Meat: 12, 
+    }
 
 class Marlin(Entity): 
     name = 'Marlin' 
     description = 'Stab' 
     starting_hp = 150
-    starting_attack = 100
+    starting_attack = 70
     starting_access_levels = (Levels.Middle,) 
 
 class C_Marlin(Marlin, Creature): 
-    drops = ((Marlin_Sword, 1),) 
+    starting_drops = {
+        Marlin_Sword: 1, 
+        Meat: 6, 
+    }
     passive = True
 
 class Mushroom_Fish(Entity): 
@@ -3781,7 +3901,7 @@ class Mushroom_Fish(Entity):
     starting_access_levels = (Levels.Middle,) 
 
 class C_Mushroom_Fish(Mushroom_Fish, Creature): 
-    drops = ((Meat, 6),) 
+    starting_drops = {Meat: 6,} 
 
 class Tiger_Oscar(Entity): 
     name = 'Tiger Oscar' 
@@ -3791,7 +3911,7 @@ class Tiger_Oscar(Entity):
     starting_access_levels = (Levels.Middle,) 
 
 class C_Tiger_Oscar(Tiger_Oscar, Creature): 
-    drops = ((Meat, 5),) 
+    starting_drops = {Meat: 5,} 
 
 class Barracuda(Entity): 
     name = 'Barracuda' 
@@ -3805,7 +3925,11 @@ class C_Barracuda(Barracuda, Creature):
     per_round_attack_increase = 30
     
     specials = Barracuda.specials + ('HP increases by {} every battle round'.format(per_round_hp_increase), 'Attack damage increases by {} every '
-                                                                                                          'battle round'.format(per_round_attack_increase)) 
+'battle round'.format(per_round_attack_increase)) 
+
+    starting_drops = {Meat: 3,} 
+    drops_scaling = {Meat: 5,} 
+    passive = True
 
     def __init__(self, client, channel, enemy, current_level=None):
         self.elapsed_battle_rounds = 0
@@ -3826,6 +3950,11 @@ class C_Barracuda(Barracuda, Creature):
 
         self.base_attack -= attack_decrease
         self.current_attack -= attack_decrease
+
+        increased_drops = {item: amount * self.elapsed_battle_rounds for item, amount in 
+self.drops_scaling.items()} 
+
+        self.drops = subtract_dicts(self.drops, increased_drops) 
     
     @action
     async def on_turn_on(self, report): 
@@ -3843,6 +3972,11 @@ class C_Barracuda(Barracuda, Creature):
 
         self.base_attack += attack_increase
         self.current_attack += attack_increase
+
+        increased_drops = {item: amount * self.elapsed_battle_rounds for item, amount in 
+self.drops_scaling.items()} 
+
+        self.drops = add_dicts(self.drops, increased_drops) 
     
     @action
     async def on_battle_round_start(self, report):
@@ -3867,6 +4001,12 @@ class C_Barracuda(Barracuda, Creature):
 
         await self.attack_changed(report) 
 
+        drops_increase_str = format_iterable(self.drops_scaling.items(), formatter='{0[1]} {0[0].name}(s)') 
+
+        self.drops = add_dicts(self.drops, self.drops_scaling) 
+
+        report.add(f"{self.name}'s drops increased by {drops_increase_str}! ") 
+
         await Creature.on_battle_round_start(self, report) 
 
 class Shovelnose_Guitar_Fish(Entity): 
@@ -3877,14 +4017,14 @@ class Shovelnose_Guitar_Fish(Entity):
     starting_access_levels = (Levels.Middle,) 
 
 class C_Shovelnose_Guitar_Fish(Shovelnose_Guitar_Fish, Creature): 
-    drops = ((Shovelnose, 1),) 
+    starting_drops = {Shovelnose: 1,} 
 
 class Vortex_Fish(Entity): 
     steal_amount = 3
 
     name = 'Vortex Fish' 
     description = 'Succ' 
-    specials = ("When attacking Forager, will attempt to steal {} items of the player's choice".format(steal_amount),) 
+    specials = ("When attacking, will attempt to steal {} items of the player's choice".format(steal_amount),) 
     starting_hp = 100
     starting_attack = 20
     starting_access_levels = (Levels.Middle,) 
@@ -3956,11 +4096,10 @@ class Vortex_Fish(Entity):
         await Entity.switch_hit(self, report, target) 
 
         # noinspection PyRedundantParentheses
-        if target.is_a(Forager): 
-            await self.attempt_steal(report, target) 
+        await self.attempt_steal(report, target) 
 
 class C_Vortex_Fish(Vortex_Fish, Creature): 
-    pass
+    starting_drops = {Meat: 4,} 
 
 class Largemouth_Bass(Entity): 
     name = 'Largemouth Bass' 
@@ -3970,7 +4109,7 @@ class Largemouth_Bass(Entity):
     starting_access_levels = (Levels.Middle,) 
 
 class C_Largemouth_Bass(Largemouth_Bass, Creature): 
-    drops = ((Meat, 4),) 
+    starting_drops = {Meat: 4,} 
 
 class Tuna(Entity): 
     name = 'Tuna' 
@@ -3980,7 +4119,7 @@ class Tuna(Entity):
     starting_access_levels = (Levels.Middle,) 
 
 class C_Tuna(Tuna, Creature): 
-    drops = ((Meat, 5),) 
+    starting_drops = {Meat: 5,} 
 
 class Moray_Eel(Entity): 
     name = 'Moray Eel' 
@@ -3990,7 +4129,7 @@ class Moray_Eel(Entity):
     starting_access_levels = (Levels.Middle,) 
 
 class C_Moray_Eel(Moray_Eel, Creature): 
-    drops = ((Slime_Coat, 1),) 
+    starting_drops = {Slime_Coat: 1,} 
 
 class Electric_Eel(Entity): 
     name = 'Electric Eel' 
@@ -4018,7 +4157,7 @@ class Electric_Eel(Entity):
             report.add('{} failed to stun {}. '.format(self.name, target.name)) 
 
 class C_Electric_Eel(Electric_Eel, Creature): 
-    drops = ((Watt, 5),) 
+    starting_drops = {Watt: 5,} 
 
 class Pufferfish(Entity): 
     name = 'Pufferfish' 
@@ -4031,7 +4170,7 @@ class C_Pufferfish(Pufferfish, Creature):
     oxygen_drop = 1
     
     specials = ('Gives the player {} oxygen upon death'.format(oxygen_drop),) 
-    drops = ((Pufferfish_Corpse, 1),) 
+    starting_drops = {Pufferfish_Corpse: 1,} 
 
     @action
     async def drop_stuff(self, report, drop_to): 
@@ -4118,7 +4257,7 @@ level_stats = {
             C_Tiger_Fish: 1,
             C_Gar: 1,
             C_Turtle: 3,
-            C_Piranha: 1,
+            C_Piranha: 100,
             C_Hatchet_Fish: 1,
             C_Octofish: 1,
             C_Big_Trout: 1,
@@ -4142,7 +4281,7 @@ level_stats = {
             C_Marlin: 1, 
             C_Mushroom_Fish: 1, 
             C_Tiger_Oscar: 1, 
-            C_Barracuda: 1, 
+            C_Barracuda: 100, 
             C_Shovelnose_Guitar_Fish: 1,
             C_Vortex_Fish: 1, 
             C_Largemouth_Bass: 1, 
