@@ -1426,6 +1426,12 @@ class Entity(Events):
     
     @classmethod
     def gen_help_specials(cls, specials): 
+        if cls.starting_hp_multiplier != 1: 
+            specials.append(f'HP is always multiplied by {cls.starting_hp_multiplier}') 
+        
+        if cls.starting_attack_multiplier != 1: 
+            specials.append(f'Attack damage is always multiplied by {cls.starting_attack_multiplier}') 
+        
         if cls.starting_enemy_attack_multiplier != 1: 
             percent = cls.starting_enemy_attack_multiplier - 1
 
@@ -1463,10 +1469,8 @@ attacking {cls.name}')
         embed.add_field(name='Special abilities', value=specials_str if len(specials_str) > 0 else None, inline=False) 
 
         embed.add_field(name='HP', value=cls.starting_hp) 
-        embed.add_field(name='HP Multiplier', value=cls.starting_hp_multiplier) 
         embed.add_field(name='Shield', value=cls.starting_shield)
         embed.add_field(name='Attack Damage', value=cls.starting_attack) 
-        embed.add_field(name='Attack Multiplier', value=cls.starting_attack_multiplier) 
 
         miss_string = format_iterable(range(1, min(cls.starting_miss, 6) + 1))
         crit_string = format_iterable(range(max(cls.starting_crit, 1), 7))
@@ -3106,8 +3110,10 @@ class Fisherman(Player):
 class Hunter(Player):
     name = 'Hunter'
     description = 'Head of the pack' 
-    starting_hp = 150
-    starting_attack = 50
+    starting_hp = 125
+    starting_hp_multiplier = 1.2
+    starting_attack = 40
+    starting_attack_multiplier = 1.25
     starting_multipliers = {Meat: 2} 
 
 class Diver(Player):
