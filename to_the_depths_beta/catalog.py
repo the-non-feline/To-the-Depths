@@ -43,7 +43,7 @@ def subtract_lists(top, bottom):
 def add_dicts(top, bottom, multiplier=1): 
     total = top.copy() 
 
-    for key, value in bottom.values(): 
+    for key, value in bottom.items(): 
         to_add = value * multiplier
 
         if key in total: 
