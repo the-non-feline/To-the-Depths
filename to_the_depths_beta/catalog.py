@@ -1485,6 +1485,12 @@ attacking {cls.name}')
         return embed
     
     def gen_stats_specials(self, specials): 
+        if self.starting_hp_multiplier != 1: 
+            specials.append(f'HP is always multiplied by {self.starting_hp_multiplier}') 
+        
+        if self.starting_attack_multiplier != 1: 
+            specials.append(f'Attack damage is always multiplied by {self.starting_attack_multiplier}') 
+        
         if self.enemy_attack_multiplier != 1: 
             percent = self.enemy_attack_multiplier - 1
 
@@ -1522,10 +1528,8 @@ attacking {self.name}')
         embed.add_field(name='Special abilities', value=specials_str if len(specials_str) > 0 else None, inline=False) 
 
         embed.add_field(name='HP', value='{} / {}'.format(self.current_hp, self.max_hp)) 
-        embed.add_field(name='HP Multiplier', value=self.hp_multiplier) 
         embed.add_field(name='Shield', value='{} / {}'.format(self.current_shield, self.max_shield))
         embed.add_field(name='Attack Damage', value=self.current_attack) 
-        embed.add_field(name='Attack Multiplier', value=self.attack_multiplier) 
 
         miss_string = format_iterable(range(1, min(self.miss, 6) + 1))
         crit_string = format_iterable(range(max(self.crit, 1), 7))
