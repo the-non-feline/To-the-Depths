@@ -1238,7 +1238,7 @@ class Shark_Armor(Armor):
 
     name = 'Shark Skin Armor' 
     description = 'Painful to hit' 
-    effects = ('When wearer is attacked, will deal an extra {retal_percent:.0%} of the damage back to the \
+    effects = (f'When wearer is attacked, will deal an extra {retal_percent:.0%} of the damage back to the \
 attacker',) 
     recipe = (Shark_Skin, 1), (Meat, 20) 
 
