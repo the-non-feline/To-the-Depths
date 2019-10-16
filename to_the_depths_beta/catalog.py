@@ -3628,7 +3628,7 @@ class C_Piranha(Piranha, Creature):
     drops_scaling_str = format_iterable(drops_scaling.items(), formatter='{0[1]} {0[0].name}(s)') 
 
     specials = Piranha.specials + ('Attack increases by {} every battle round'.format(per_round_attack_increase), 
-f'Drops increases by {drops_scaling_str} every battle_round')  
+f'Drops increases by {drops_scaling_str} every battle round')  
     starting_drops = {Meat: 1,} 
     
     def __init__(self, client, channel, enemy, current_level=None):
@@ -3946,7 +3946,7 @@ class C_Barracuda(Barracuda, Creature):
     drops_scaling_str = format_iterable(drops_scaling.items(), formatter='{0[1]} {0[0].name}(s)') 
     
     specials = Barracuda.specials + ('HP increases by {} every battle round'.format(per_round_hp_increase), 'Attack damage increases by {} every '
-'battle round'.format(per_round_attack_increase), f'Drops increases by {drops_scaling_str} every battle_round') 
+'battle round'.format(per_round_attack_increase), f'Drops increases by {drops_scaling_str} every battle round') 
 
     starting_drops = {Meat: 3,} 
     passive = True
