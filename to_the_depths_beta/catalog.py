@@ -2893,6 +2893,8 @@ early? ')
 
         if proceed: 
             await self.game.next_turn(report) 
+        else: 
+            report.add(f"{self.name} didn't end their turn early. ") 
     
     @action
     async def invite_members(self, report, members): 
