@@ -1238,7 +1238,7 @@ class Shark_Armor(Armor):
 
     name = 'Shark Skin Armor' 
     description = 'Painful to hit' 
-    effects = (f'When wearer is attacked, will deal an extra {retal_percent:.0%} of the damage back to the \
+    effects = (f'When wearer is attacked, will deal an extra {retal_percent:.0%} of the damage taken back to the \
 attacker',) 
     recipe = (Shark_Skin, 1), (Meat, 20) 
 
@@ -1989,7 +1989,7 @@ class Player(Commander, metaclass=Player_Meta, append=False):
     starting_attack = 20
     starting_access_levels = (Levels.Surface,) 
     starting_oxygen = 5
-    starting_items = ((Shark_Skin, 1), (Meat, 20)) 
+    starting_items = () 
     starting_multipliers = {}
     starting_priority = 0
 
@@ -2880,7 +2880,19 @@ thumbs_down_emoji), timeout=10, default_emoji=thumbs_down_emoji)
     
     @action
     async def end_turn(self, report): 
-        await self.game.next_turn(report) 
+        proceed = not self.can_move
+
+        if not proceed: 
+            report.add(f'{self.name}, you have not used your move yet! Do you still want to end your turn \
+early? ') 
+
+            emoji = await self.client.prompt_for_reaction(report, self.member_id, emojis=(thumbs_up_emoji, 
+    thumbs_down_emoji), timeout=10, default_emoji=thumbs_down_emoji) 
+
+            proceed = emoji == thumbs_up_emoji
+
+        if proceed: 
+            await self.game.next_turn(report) 
     
     @action
     async def invite_members(self, report, members): 
@@ -4261,7 +4273,7 @@ level_stats = {
             C_Tiger_Fish: 1,
             C_Gar: 1,
             C_Turtle: 3,
-            C_Piranha: 100,
+            C_Piranha: 1,
             C_Hatchet_Fish: 1,
             C_Octofish: 1,
             C_Big_Trout: 1,
@@ -4285,7 +4297,7 @@ level_stats = {
             C_Marlin: 1, 
             C_Mushroom_Fish: 1, 
             C_Tiger_Oscar: 1, 
-            C_Barracuda: 100, 
+            C_Barracuda: 1, 
             C_Shovelnose_Guitar_Fish: 1,
             C_Vortex_Fish: 1, 
             C_Largemouth_Bass: 1, 
