@@ -3391,6 +3391,8 @@ class Creature(Commander, metaclass=Creature_Meta, append=False):
     
     def __init__(self, client, channel, enemy, current_level=None): 
         self.drops = self.starting_drops.copy() 
+
+        Commander.__init__(self, client, channel, enemy=enemy, current_level=current_level) 
     
     @staticmethod
     def modify_deconstructed(deconstructed): 
@@ -3607,9 +3609,13 @@ class Piranha(Entity):
 
 class C_Piranha(Piranha, Creature): 
     per_round_attack_increase = 20
-    specials = Piranha.specials + ('Attack increases by {} every battle round'.format(per_round_attack_increase),) 
-    starting_drops = {Meat: 1,} 
     drops_scaling = {Meat: 2,} 
+
+    drops_scaling_str = format_iterable(drops_scaling.items(), formatter='{0[1]} {0[0].name}(s)') 
+
+    specials = Piranha.specials + ('Attack increases by {} every battle round'.format(per_round_attack_increase), 
+f'Drops increases by {drops_scaling_str} every battle_round')  
+    starting_drops = {Meat: 1,} 
     
     def __init__(self, client, channel, enemy, current_level=None):
         self.elapsed_battle_rounds = 0
@@ -3657,11 +3663,9 @@ self.drops_scaling.items()}
 
         await self.attack_changed(report) 
 
-        drops_increase_str = format_iterable(self.drops_scaling.items(), formatter='{0[1]} {0[0].name}(s)') 
-
         self.drops = add_dicts(self.drops, self.drops_scaling) 
 
-        report.add(f"{self.name}'s drops increased by {drops_increase_str}! ") 
+        report.add(f"{self.name}'s drops increased by {self.drops_scaling_str}! ") 
 
         await Creature.on_battle_round_start(self, report) 
 
@@ -3923,12 +3927,14 @@ class Barracuda(Entity):
 class C_Barracuda(Barracuda, Creature): 
     per_round_hp_increase = 30
     per_round_attack_increase = 30
+    drops_scaling = {Meat: 5,} 
+
+    drops_scaling_str = format_iterable(drops_scaling.items(), formatter='{0[1]} {0[0].name}(s)') 
     
     specials = Barracuda.specials + ('HP increases by {} every battle round'.format(per_round_hp_increase), 'Attack damage increases by {} every '
-'battle round'.format(per_round_attack_increase)) 
+'battle round'.format(per_round_attack_increase), f'Drops increases by {drops_scaling_str} every battle_round') 
 
     starting_drops = {Meat: 3,} 
-    drops_scaling = {Meat: 5,} 
     passive = True
 
     def __init__(self, client, channel, enemy, current_level=None):
@@ -4001,11 +4007,9 @@ self.drops_scaling.items()}
 
         await self.attack_changed(report) 
 
-        drops_increase_str = format_iterable(self.drops_scaling.items(), formatter='{0[1]} {0[0].name}(s)') 
-
         self.drops = add_dicts(self.drops, self.drops_scaling) 
 
-        report.add(f"{self.name}'s drops increased by {drops_increase_str}! ") 
+        report.add(f"{self.name}'s drops increased by {self.drops_scaling_str}! ") 
 
         await Creature.on_battle_round_start(self, report) 
 
