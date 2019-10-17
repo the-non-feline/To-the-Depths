@@ -1486,10 +1486,10 @@ attacking {cls.name}')
     
     def gen_stats_specials(self, specials): 
         if self.starting_hp_multiplier != 1: 
-            specials.append(f'HP is always multiplied by {self.starting_hp_multiplier}') 
+            specials.append(f'HP is always multiplied by {self.hp_multiplier}') 
         
         if self.starting_attack_multiplier != 1: 
-            specials.append(f'Attack damage is always multiplied by {self.starting_attack_multiplier}') 
+            specials.append(f'Attack damage is always multiplied by {self.attack_multiplier}') 
         
         if self.enemy_attack_multiplier != 1: 
             percent = self.enemy_attack_multiplier - 1
@@ -1907,19 +1907,23 @@ class Commander(Entity):
         self.priority += self.starting_priority
     
     @classmethod
-    def help_embed(cls): 
-        embed = super(Commander, cls).help_embed() 
+    def gen_help_specials(cls, specials): 
+        super(Commander, cls).gen_help_specials(specials) 
 
-        embed.add_field(name='Priority', value=cls.starting_priority) 
+        if cls.starting_priority: 
+            specials.append(f'Gets {cls.starting_priority:+} priority in battle') 
+    
+    def gen_stats_specials(self, specials): 
+        Entity.gen_stats_specials(self, specials) 
 
-        return embed
+        if self.priority: 
+            specials.append(f'Gets {self.priority:+} priority in battle') 
     
     def stats_embed(self): 
         embed = Entity.stats_embed(self) 
         
         embed.add_field(name='Currently fighting against', value=self.enemy.name if self.enemy is not None else None) 
-        embed.add_field(name='Battle Turn', value=self.battle_turn)
-        embed.add_field(name='Priority', value=self.priority) 
+        embed.add_field(name='Battle Turn', value=self.battle_turn) 
 
         return embed
     
