@@ -3122,7 +3122,7 @@ class Hunter(Player):
     starting_hp_multiplier = 1.2
     starting_attack = 40
     starting_attack_multiplier = 1.25
-    starting_multipliers = {Meat: 2} 
+    starting_multipliers = {Meat: 1.5} 
 
 class Diver(Player):
     allowed_level_deviation = 1
@@ -3171,8 +3171,8 @@ def calculate_level_multipliers(self):
 
 class Cryomancer(Player): 
     fb_threshold = 0.5
-    fb_eam = 0.7
-    fb_attack_multiplier = 1.3
+    fb_eam = 0.4
+    fb_attack_multiplier = 1
     
     name = 'Cryomancer' 
     description = 'Brrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrrr' 
