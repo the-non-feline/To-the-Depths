@@ -130,7 +130,7 @@ class Game(ttd_tools.Game_Object):
         if self.current_turn_index >= removed_player_index:
             self.current_turn_index -= 1
         
-        report.add('{} was removed from the game and added to the queue. '.format(player.name)) 
+        report.add(f'{player.mention} was removed from the game and added to the queue. ') 
 
         if len(self.players) == 0: 
             await self.pause_or_delete(report) 

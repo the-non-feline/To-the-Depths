@@ -76,7 +76,7 @@ class TTD_Bot(discord.Client, storage.Deconstructable):
     #print(catalog.classes) 
     #print(catalog.creatures) 
 
-    def __init__(self, storage_file, logs_file, safely_shutdown_file, owner_id, default_prefix): 
+    def __init__(self, storage_file, safely_shutdown_file, owner_id, default_prefix, logs_file=sys.stdout): 
         self.owner_id = owner_id
         self.default_prefix = default_prefix
         self.tasks = 0
@@ -93,6 +93,8 @@ class TTD_Bot(discord.Client, storage.Deconstructable):
         self.game_data = {} 
 
         self.client = self
+        
+        sys.stderr = sys.stdout = self.logs_file
 
         discord.Client.__init__(self, status=self.status, activity=self.current_activity) 
         storage.Deconstructable.__init__(self) 
@@ -353,7 +355,8 @@ class TTD_Bot(discord.Client, storage.Deconstructable):
                         
                         await owner_dm.send(content='`{}` in channel `{}` in server `{}`: `{}`'.format(typ.__name__, self.channel, self.channel.guild if hasattr(self.channel, 'guild') else None, value)) 
                         
-                        self.report.add('{}, something went wrong while running your command. A team of highly trained {}s has been dispatched to deal with this situation. The bot might also try to restore save data from the last save point. '.format(self.author.mention, monkey_head_emoji)) 
+                        self.report.add('{}, something went wrong while running your command. A team of \
+highly trained {}s has been dispatched to deal with this situation. '.format(self.author.mention, monkey_head_emoji)) 
                     
                     await self.report.send_self() 
                 finally: 
@@ -468,7 +471,7 @@ class TTD_Bot(discord.Client, storage.Deconstructable):
         extension = '{}, react to this message with '.format(mention) 
 
         if emojis is not None: 
-            options = ttd_tools.format_iterable(emojis, formatter='`{}`') 
+            options = ttd_tools.format_iterable(emojis) 
 
             extension += 'one of the following: {}. '.format(options) 
         else: 
@@ -907,51 +910,84 @@ async def donate_args_check(self, report, author, target, *to_donate):
         else: 
             return True
 
+def convert_donation(specified): 
+    items = specified[::2] 
+    amounts = specified[1::2] 
+
+    items = (ttd_tools.search(catalog.items, item) for item in items) 
+    
+    donation_dict = {} 
+    
+    for item, amount in zip(items, amounts): 
+        if not amount.isnumeric(): 
+            donation_dict[item] = amount
+        elif item not in donation_dict: 
+            donation_dict[item] = int(amount) 
+        elif type(donation_dict[item]) is int: 
+            donation_dict[item] += int(amount) 
+    
+    return donation_dict
+
 @TTD_Bot.command('donate', 'Donates the specified amounts of the specified items to the mentioned player', special_note='Items and amounts to '
-                                                                                                                        'donate are specified in '
-                                                                                                                        'pairs of item and amount, '
-                                                                                                                        'like this: `item amount`. '
-                                                                                                                        'Each pair is separated by '
-                                                                                                                        'a space. Amounts can be '
-                                                                                                                        'specified as `all` to '
-                                                                                                                        'donate all you have of '
-                                                                                                                        'that item. Example: `('
-                                                                                                                        'prefix)donate @bob coral 2 meat 5 sky_blade all` to donate 2 Coral, 5 Meat, and all your Sky Blades to bob. **Players must be in the same level to donate to each other.** ', groups=('items',), indefinite_args=True, required_args=('target', 'item_1', 'amount_1'), optional_args=('item_2', 'amount_2', '...'), special_args_check=donate_args_check) 
+'donate are specified in '
+'pairs of item and amount, '
+'like this: `item amount`. '
+'Each pair is separated by '
+'a space. Amounts can be '
+'specified as `all` to '
+'donate all you have of '
+'that item. Example: `('
+'prefix)donate @bob coral 2 meat 5 sky_blade all` to donate 2 Coral, 5 Meat, and all your Sky Blades to bob. \
+**Players must be in the same level to donate to each other.** ', groups=('items',), indefinite_args=True, 
+required_args=('target', 'item_1', 'amount_1'), optional_args=('item_2', 'amount_2', '...'), special_args_check=donate_args_check) 
 @commands.requires_game
 @commands.requires_player
 @commands.requires_uo_game_turn
-async def donate(self, report, player, target, *to_donate): 
-    items = to_donate[::2] 
-    amounts = to_donate[1::2] 
-
+async def whitelist_donate(self, report, player, target, *to_donate): 
     mentions = self.decode_mentions(report, (target,)) 
     
     mention = tuple(mentions)[0] 
     
     donate_to = player.game.get_player(mention.id) 
+
     if donate_to is not None: 
         if donate_to is player: 
             report.add("Unlike {}, {} is smart and realizes there's no point in trying to donate to themselves. ".format(player.mention, player.name)) 
         elif player.current_level != donate_to.current_level: 
             report.add("{0} can't donate to {1} because they're in different levels; {0} is in the {2} while {1} is in the {3}. ".format(player.name, donate_to.name, player.current_level.name, donate_to.current_level.name)) 
         else: 
-            items = (ttd_tools.search(catalog.items, item) for item in items) 
-            
-            donation_dict = {} 
-            
-            for item, amount in zip(items, amounts): 
-                if not amount.isnumeric(): 
-                    donation_dict[item] = amount
-                elif item not in donation_dict: 
-                    donation_dict[item] = int(amount) 
-                elif type(donation_dict[item]) is int: 
-                    donation_dict[item] += int(amount) 
+            donation_dict = convert_donation(to_donate)  
             
             donation = [(item, amount) for item, amount in donation_dict.items()] 
             
             print(donation) 
 
-            await player.donate(report, donate_to, donation) 
+            await player.whitelist_donate(report, donate_to, donation) 
+    else: 
+        report.add('{} cannot donate to {} because they are not in this game. '.format(player.name, mention.mention)) 
+
+@TTD_Bot.command('donateall', 'Donates everything except for the specified items', special_note=f'Same restrictions and usage as \
+`{whitelist_donate.name}` command', groups=('items',), indefinite_args=True, required_args=('target',), 
+optional_args=('item_1', 'amount_1', 'item_2', 'amount_2', '...'), special_args_check=donate_args_check) 
+@commands.requires_game
+@commands.requires_player
+@commands.requires_uo_game_turn
+async def blacklist_donate(self, report, player, target, *blacklist): 
+    mentions = self.decode_mentions(report, (target,)) 
+
+    mention = tuple(mentions)[0] 
+
+    donate_to = player.game.get_player(mention.id) 
+
+    if donate_to is not None: 
+        if donate_to is player: 
+            report.add("Unlike {}, {} is smart and realizes there's no point in trying to donate to themselves. ".format(player.mention, player.name)) 
+        elif player.current_level != donate_to.current_level: 
+            report.add("{0} can't donate to {1} because they're in different levels; {0} is in the {2} while {1} is in the {3}. ".format(player.name, donate_to.name, player.current_level.name, donate_to.current_level.name)) 
+        else: 
+            blacklist_dict = convert_donation(blacklist) 
+
+            await player.blacklist_donate(report, donate_to, blacklist_dict) 
     else: 
         report.add('{} cannot donate to {} because they are not in this game. '.format(player.name, mention.mention)) 
 
@@ -968,25 +1004,12 @@ async def move_args_check(self, report, author, direction):
     else: 
         return True
 
-@commands.requires_can_move
-async def regular_move(self, report, player, direction): 
-    await player.move_levels(report, direction, 'regular') 
-
-async def diver_move(self, report, player, direction): 
-    if player.current_free_moves > 0: 
-        await player.move_levels(report, direction, 'free') 
-    else: 
-        await regular_move(self, report, player, direction) 
-
-@TTD_Bot.command('move', 'Moves `up` or `down` a level', special_note='This command takes your move (Diver ability exception) ', groups=('movement',), required_args=('direction',), special_args_check=move_args_check) 
+@TTD_Bot.command('move', 'Moves `up` or `down` a level', special_note='This command takes your move', groups=('movement',), required_args=('direction',), special_args_check=move_args_check) 
 @commands.requires_game
 @commands.requires_player
-@commands.requires_o_game_turn
+@commands.requires_can_move
 async def move(self, report, player, direction): 
-    if player.is_a(catalog.Diver): 
-        await diver_move(self, report, player, direction) 
-    else: 
-        await regular_move(self, report, player, direction) 
+    await player.change_levels(report, direction) 
 
 async def craft_args_check(self, report, author, item, amount): 
     target_item = ttd_tools.search(catalog.items, item) 
@@ -1007,20 +1030,15 @@ async def craft_args_check(self, report, author, item, amount):
 async def craft(self, report, player, item, amount): 
     await player.craft(report, item, amount) 
 
-@TTD_Bot.command('drag', 'Moves either `up` or `down`, dragging your opponent with you. ', special_note='This command is only usable '
-                                                                                                        'by the Diver class. It also '
-                                                                                                        'takes your battle turn. '
-                                                                                                        'Dragging a creature cuts its '
-                                                                                                        'drops by {}x (rounding down). '.format(
-    catalog.Creature.dragged_drops_penalty), groups=('battle',), 
-                                                                                                        required_args=('direction',), 
-                 special_args_check=move_args_check) 
+@TTD_Bot.command('drag', 'Moves either `up` or `down`, dragging your opponent with you. ', 
+                 special_note=f'This command is only usable by the {catalog.Diver.name} class. It also takes your battle turn. ', 
+                 groups=('battle',), required_args=('direction',), special_args_check=move_args_check) 
 @commands.requires_game
 @commands.requires_player
 @commands.requires_battle_turn
 async def drag(self, report, player, direction): 
     if player.is_a(catalog.Diver): 
-        await player.move_levels(report, direction, 'drag') 
+        await player.drag(report, direction) 
     else: 
         report.add("{} can't drag because they aren't a Diver. ".format(player.name)) 
 
@@ -1058,3 +1076,20 @@ groups=('player', 'items'))
 @commands.requires_uo_game_turn
 async def regen_shield(self, report, player): 
     await player.regen_shield(report) 
+
+@TTD_Bot.command('deletegame', 'Deletes the game') 
+@commands.requires_owner
+@commands.requires_game
+@commands.modifying
+async def delete_game(self, report, game, author): 
+    report.add(f'{author.mention}, are you sure you want to delete this game? ') 
+
+    emoji = await self.prompt_for_reaction(report, author.id, emojis=(thumbs_up_emoji, 
+thumbs_down_emoji), timeout=10, default_emoji=thumbs_down_emoji) 
+
+    if emoji == thumbs_up_emoji: 
+        del self.game_data[game.channel.id]
+
+        report.add('The game was successfully deleted. ') 
+    else: 
+        report.add('The game was not deleted. ') 

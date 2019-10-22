@@ -28,8 +28,7 @@ class Fighting(Article):
     ('flee', f'Try to flee the fight. You will flip a coin, and if you win the flip, \
 you successfully flee. However, if you lose, your opponent will get to attack you {catalog.Player.failed_flee_punishment} times, \
 for free! {catalog.Forager.name} is exempt from this coin flip in the {catalog.Levels.Surface.name}. '), \
-    ('drag', f'Can only be used by the {catalog.Diver.name} class. Drag your opponent one level `up` or `down`. Note that doing \
-this on a creature will result in it only dropping half its normal drops on death. ') 
+    ('drag', f'Can only be used by the {catalog.Diver.name} class. Drag your opponent one level `up` or `down`. ') 
     bt_actions_gen = (f'`{action_name}` - {action_description}' for action_name, action_description in bt_actions) 
     bt_actions_str = ttd_tools.make_list(bt_actions_gen) 
     
@@ -145,8 +144,8 @@ items also have restrictions on when and how often you can use them. '), \
 must be in the same level to do this. '), \
     rel_comms_field('items')  
 
-class Introduction(Article): 
-    name = 'Introduction' 
+class Commands(Article): 
+    name = 'Commands' 
     description = 'To the Depths is a game played through interacting with this Discord bot. This section \
 covers the basics of using this bot. ' 
 
@@ -175,6 +174,47 @@ can react with.
 
 Note that most prompts have a time limit. If you don't respond within the time limit, the bot will just \
 choose a default response for you. '''), \
-    ('Additional help', 'Additional help is provided through the `help` and `list` commands. `help` \
-displays useful info on all topics that you specified in its arguments. `list` is used to list valid \
-topic names. ') 
+    ('Additional help', 'You can look up any command with `help` command for details about using it') 
+
+class HP(Article): 
+    name = 'HP/Damage' 
+    description = 'This section explains HP and damage mechanics' 
+    
+    fields = ('HP', 'Everything that can participate in a fight has HP. When it reaches 0, the thing dies. '), \
+    ('The "HP Multiplier" stat', 'Your HP is multiplied by this when you start. Furthermore, any bonuses to your max HP are \
+multiplied by this stat. '), \
+    ('Shield', 'Shield, when it is not empty, will always take damage before HP, unless the damage bypasses shield. The shield \
+will absorb all overkill to itself, unless the damage bleeds shield. '), \
+    ('Damage', 'Damage decreases HP. It can have special properties, such as penetrating (completely bypasses the specified \
+thing) or bleeding (overkilling damage carries over onto the next thing) '), \
+    ('The "Attack Multiplier" stat', 'Like the "HP Multiplier" stat but applies to attack damage instead'), \
+    ('The "Enemy Attack Multiplier" stat', 'When an entity is taking damage from an enemy attack, the incoming damage is \
+multiplied by this stat to determine how much damage they actually take. Damage from sources other than attacks (such as pressure \
+or oxygen damage) is not affected by this stat. '), \
+    ('Electric and fire damage', 'These types of damage are not dealt immediately, rather they are dealt after a delay. Damage \
+dealt from the release of such damage counts as damage from the environment, rather than damage from attacks, and as such are not \
+affected by the "Enemy Attack Multiplier" stat. However, the stat **does** affect how much damage gets "built-up" each time. '), \
+
+class Introduction(Article): 
+    name = 'Introduction' 
+    description = 'Welcome, new player! This section will give you a basic overview of the game. ' 
+    
+    fields = ('Basic mechanics', 'To the Depths is a turn-based game. Each player chooses one of the various player classes, \
+and take turns doing stuff. The game centers on fighting NPC creatures and obtaining items to upgrade your player. '), \
+    ('Turns', f'See the `{Turns.name}` guide for details on the turn-based nature of this game'), \
+    ('Fighting', f'The majority of items are gained through fightng and defeating NPC creatures. Fighting centers around the \
+mechanic of "battle turns". Only one side can have the battle turn at any given \
+time, and only the side with the battle turn can act. Battle turns are decided through random coin flips. A fight lasts until \
+one side flees or dies. More information in the `{Fighting.name}` guide. '), \
+    ('Items', f'Items enhance your player. Some will upgrade your player upon being received, while some must be used to give an \
+effect. More information in the `{Items.name}` guide. '), \
+    ('Using the bot', f'See the `{Commands.name}` guide for help on using this bot. '), \
+    ('Using the `help` and `list` commands', 'These two commands are crucial to understanding the game. The \
+`help` command is the command you will use to look up information regarding everything in the game. To use, \
+simply type the command followed by the names of the things you want to look up. The `list` command is used \
+to "list" stuff so you know they exist. This command must be followed by a category and unlimited, optional \
+filter names. **The category for listing other guides like this is `guides`**. '), \
+    ('Some other tips', f"When in a level deeper than the {catalog.Levels.Surface.name}, keep track of your \
+oxygen; it would be very frustrating to die because you didn't. Also remember to look at your HP before \
+throwing yourself into a fight. The `viewstats` command is your friend here. Also **please don't forget \
+to end your turn with `endturn` command**. It is very annoying to other people when you forget. ") 

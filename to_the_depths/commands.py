@@ -56,10 +56,10 @@ class Command:
 
         embed.add_field(name='Usage', value='''`{}` 
 
-`[` and `]` denote optional arguments; `*` denotes "indefinite" arguments (that is, you can put as many arguments as you want there) '''.format(self.syntax)) 
+`[` and `]` denote optional arguments; `*` denotes "indefinite" arguments (that is, you can put as many arguments as you want there) '''.format(self.syntax), inline=False) 
 
         if self.special_note is not None: 
-            embed.add_field(name='Important note', value=self.special_note) 
+            embed.add_field(name='Important note', value=self.special_note, inline=False) 
         
         groups_str = ttd_tools.format_iterable(self.groups) or None
 
@@ -159,13 +159,16 @@ def requires_player(func):
     return erequiring_func
 
 def modifying(func): 
-    async def modifying_func(self, *args): 
+    async def modifying_func(self, report, *args): 
         try: 
-            result = await func(self, *args) 
+            result = await func(self, report, *args) 
         except: 
             self.needs_reloading = True
 
             print('error, client now needs reloading') 
+
+            report.add(f'An epic error occurred, the bot will reload from the last save point so that \
+everything is good. ')
 
             await self.change_presence(status=discord.Status.do_not_disturb, activity=discord.Game('recovering from error')) 
 
