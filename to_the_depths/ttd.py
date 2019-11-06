@@ -627,7 +627,6 @@ async def display_game(self, report, game, author):
 @TTD_Bot.command('suicide', 'Commits suicide', groups=('player',)) 
 @commands.requires_game
 @commands.requires_player
-@commands.requires_uo_game_turn
 async def suicide(self, report, player): 
     await player.suicide(report) 
 
