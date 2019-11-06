@@ -519,7 +519,7 @@ highly trained {}s has been dispatched to deal with this situation. '.format(sel
         await command_object.run(report, author, args) 
 
     async def on_message(self, message): 
-        if not self.shutting_down and not self.needs_reloading and self.listening and message.author.id != self.user.id and not message.author.bot: 
+        if not self.shutting_down and not self.needs_reloading and self.listening and message.author.id != self.user.id: 
             channel = message.channel
             prefix = self.prefix(channel) 
             words = message.content.split() 
