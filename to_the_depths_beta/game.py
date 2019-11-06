@@ -164,14 +164,16 @@ class Game(ttd_tools.Game_Object):
             async with new_player.acting(report): 
                 await new_player.on_life_start(report) 
 
-                # choose a random position to insert the new player into
-                random_index = random.randint(0, len(self.players))
-
-                self.players.insert(random_index, new_player)
-
-                # if the current player's index is above this new index, the current player's index increments by 1
-                if self.current_turn_index >= random_index:
+                if self.current_turn_index >= 0: 
+                    index = self.current_turn_index
+                    
+                    # increments current_turn_index to account for player inserted before
                     self.current_turn_index += 1
+                else: 
+                    # choose a random position to insert the new player into
+                    index = random.randint(0, len(self.players)) 
+
+                self.players.insert(index, new_player) 
                 
                 report.add('Success! {} joined the game. '.format(member.mention)) 
         else:
