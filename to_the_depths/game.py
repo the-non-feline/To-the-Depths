@@ -144,11 +144,14 @@ class Game(ttd_tools.Game_Object):
             report.add('{} is already in the game, as {}. '.format(member.mention, player.name))
         elif member.id in self.queue:
             report.add('{} is already in the queue. '.format(member.mention))
-        elif not member.bot:
-            self.queue.append(member.id)
+        else: 
+            self.queue.append(member.id) 
+            
             report.add('{} was added to the queue. '.format(member.mention))
+        '''
         else: 
             report.add('{} was not added as bots are not allowed in games. '.format(member.mention)) 
+        ''' 
     
     async def add_player(self, report, member, class_choice): 
         if member.id in self.queue: 
