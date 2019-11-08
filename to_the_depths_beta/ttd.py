@@ -413,7 +413,12 @@ highly trained {}s has been dispatched to deal with this situation. '.format(sel
 
         await self.do_on_shutdown() 
 
-        print('logging out! ')
+        self.storage_file.close() 
+        self.safely_shutdown_file.close() 
+        if self.logs_file_name: 
+            self.logs_file.close() 
+
+        print('logging out! ') 
 
         await discord.Client.logout(self) 
     
