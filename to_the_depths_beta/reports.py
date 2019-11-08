@@ -9,8 +9,10 @@ class Report:
         self.contents = [] 
     
     async def send_message(self, sent_messages, texts, embed=None, file=None): 
-        if len(texts) > 0 or embed is not None: 
+        if len(texts) > 0 or embed is not None or file is not None: 
             sent_messages.append(await self.client.do(self.channel.send(content='\n'.join(texts), embed=embed, file=file))) 
+
+            print('there') 
 
             texts.clear() 
     
@@ -27,7 +29,7 @@ class Report:
                 await self.send_message(sent_messages, to_send, embed=message) 
             elif isinstance(message, discord.File): 
                 print('here') 
-                
+
                 await self.send_message(sent_messages, to_send, file=message) 
             else: 
                 buffer = to_send + [message] 
