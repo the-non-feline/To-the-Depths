@@ -107,8 +107,8 @@ class TTD_Bot(discord.Client, storage.Deconstructable):
     
     def sendable_filenames(self): 
         return {
-            'storage', self.storage_file_name, 
-            'logs', self.logs_file_name, 
+            'storage': self.storage_file_name, 
+            'logs': self.logs_file_name, 
         } 
     
     def channel_commands(self, channel): 
