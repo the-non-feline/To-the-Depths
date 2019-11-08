@@ -26,6 +26,8 @@ class Report:
             if isinstance(message, discord.Embed): 
                 await self.send_message(sent_messages, to_send, embed=message) 
             elif isinstance(message, discord.File): 
+                print('here') 
+                
                 await self.send_message(sent_messages, to_send, file=message) 
             else: 
                 buffer = to_send + [message] 
