@@ -1129,7 +1129,7 @@ async def sendfile_args_check(self, report, author, file_type):
 special_args_check=sendfile_args_check) 
 @commands.requires_owner
 async def send_logs(self, report, author, file_type): 
-    filename = self.sendable_names()[file_type.lower()] 
+    filename = self.sendable_filenames()[file_type.lower()] 
 
     if filename: 
         with open(filename, mode='rb'): 
