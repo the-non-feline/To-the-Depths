@@ -413,9 +413,19 @@ highly trained {}s has been dispatched to deal with this situation. '.format(sel
 
         await self.do_on_shutdown() 
 
+        print('a') 
+
         self.storage_file.close() 
+
+        print('b') 
+
         self.safely_shutdown_file.close() 
+
+        print('c') 
+
         if self.logs_file_name: 
+            print('d') 
+
             self.logs_file.close() 
 
         print('logging out! ') 
