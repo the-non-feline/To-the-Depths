@@ -8,9 +8,9 @@ class Report:
         self.channel = channel
         self.contents = [] 
     
-    async def send_message(self, sent_messages, texts, embed=None): 
+    async def send_message(self, sent_messages, texts, embed=None, file=None): 
         if len(texts) > 0 or embed is not None: 
-            sent_messages.append(await self.client.do(self.channel.send(content='\n'.join(texts), embed=embed))) 
+            sent_messages.append(await self.client.do(self.channel.send(content='\n'.join(texts), embed=embed, file=file))) 
 
             texts.clear() 
     
@@ -25,6 +25,8 @@ class Report:
         for message in self.contents: 
             if isinstance(message, discord.Embed): 
                 await self.send_message(sent_messages, to_send, embed=message) 
+            elif isinstance(message, discord.File): 
+                await self.send_message(sent_messages, to_send, file=message) 
             else: 
                 buffer = to_send + [message] 
                 proposed = '\n'.join(buffer) 

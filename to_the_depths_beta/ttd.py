@@ -76,7 +76,7 @@ class TTD_Bot(discord.Client, storage.Deconstructable):
     #print(catalog.classes) 
     #print(catalog.creatures) 
 
-    def __init__(self, storage_file, safely_shutdown_file, owner_id, default_prefix, logs_file=sys.stdout): 
+    def __init__(self, storage_file_name, safely_shutdown_file_name, owner_id, default_prefix, logs_file_name=None): 
         self.owner_id = owner_id
         self.default_prefix = default_prefix
         self.tasks = 0
@@ -84,9 +84,12 @@ class TTD_Bot(discord.Client, storage.Deconstructable):
         self.shutting_down = False
         self.needs_reloading = False
         self.needs_saving = False
-        self.storage_file = storage_file
-        self.logs_file = logs_file
-        self.safely_shutdown_file = safely_shutdown_file
+        self.storage_file_name = storage_file_name
+        self.storage_file = open(storage_file_name, mode='r+') 
+        self.logs_file_name = logs_file_name
+        self.logs_file = open(logs_file_name, mode='w+') if logs_file_name else sys.stdout
+        self.safely_shutdown_file_name = safely_shutdown_file_name
+        self.safely_shutdown_file = open(safely_shutdown_file_name, mode='r+') 
         self.status = discord.Status.offline
         self.current_activity = None
         self.afk = False
@@ -101,6 +104,12 @@ class TTD_Bot(discord.Client, storage.Deconstructable):
     
     def prefix(self, channel): 
         return self.default_prefix
+    
+    def sendable_filenames(self): 
+        return {
+            'storage', self.storage_file_name, 
+            'logs', self.logs_file_name, 
+        } 
     
     def channel_commands(self, channel): 
         return ttd_tools.Filterable((command(self, channel) for command in self.bot_commands), **self.command_filters) 
@@ -1093,3 +1102,32 @@ thumbs_down_emoji), timeout=10, default_emoji=thumbs_down_emoji)
         report.add('The game was successfully deleted. ') 
     else: 
         report.add('The game was not deleted. ') 
+
+@TTD_Bot.command('clearlogs', 'Clears the logs file') 
+@commands.requires_owner
+async def clear_logs(self, report, author): 
+    clear_file(self.logs_file) 
+
+    report.add(f'The file was cleared. ') 
+
+async def sendfile_args_check(self, report, author, file_type): 
+    sendable_names = self.sendable_filenames() 
+
+    if file_type.lower() not in sendable_names: 
+        valid_names = ttd_tools.format_iterable(sendable_names.keys(), formatter='`{}`') 
+
+        report.add(f'{author.mention}, argument `filetype` can only be one of the following: {valid_names}') 
+    else: 
+        return True 
+
+@TTD_Bot.command('sendfile', 'Sends the requested file', required_args=('filetype',), 
+special_args_check=sendfile_args_check) 
+@commands.requires_owner
+async def send_logs(self, report, author, file_type): 
+    filename = self.sendable_names()[file_type.lower()] 
+
+    if filename: 
+        with open(filename, mode='rb'): 
+            report.add(discord.File(filename)) 
+    else: 
+        report.add(f"{author.mention}, this file isn't sendable. ") 
