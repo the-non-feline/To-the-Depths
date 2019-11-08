@@ -428,8 +428,6 @@ highly trained {}s has been dispatched to deal with this situation. '.format(sel
 
             self.logs_file.close() 
 
-        print('logging out! ') 
-
         await discord.Client.logout(self) 
     
     @staticmethod
