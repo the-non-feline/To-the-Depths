@@ -361,9 +361,12 @@ class TTD_Bot(discord.Client, storage.Deconstructable):
                 try: 
                     if typ is not None: 
                         owner_dm = self.client.get_user(self.client.owner_id) 
+                        error_report = reports.Report(self.client, owner_dm) 
                         
-                        await owner_dm.send(content='`{}` in channel `{}` in server `{}`: `{}`'.format(typ.__name__, self.channel, self.channel.guild if hasattr(self.channel, 'guild') else None, value)) 
+                        error_report.add('`{}` in channel `{}` in server `{}`: `{}`'.format(typ.__name__, self.channel, self.channel.guild if hasattr(self.channel, 'guild') else None, value)) 
                         
+                        await error_report.send_self() 
+
                         self.report.add('{}, something went wrong while running your command. A team of \
 highly trained {}s has been dispatched to deal with this situation. '.format(self.author.mention, monkey_head_emoji)) 
                     
@@ -835,7 +838,11 @@ async def announce(self, report, author):
             if len(messageables) > 0: 
                 to_message = messageables[0] 
 
-                await to_message.send(content=announcement) 
+                announcement_report = reports.Report(self, to_message) 
+
+                announcement_report.add(announcement) 
+
+                await announcement_report.send_self() 
             else: 
                 print('{} has no messageable channels'.format(guild.name)) 
 
@@ -1140,7 +1147,10 @@ async def send_logs(self, report, author, file_type):
     filename = self.sendable_filenames()[file_type.lower()] 
 
     if filename: 
-        with open(filename, mode='rb'): 
-            report.add(discord.File(filename)) 
+        file_report = reports.Report(self, author) 
+
+        file_report.add(discord.File(filename)) 
+
+        await file_report.send_self() 
     else: 
         report.add(f"{author.mention}, this file isn't sendable. ") 
