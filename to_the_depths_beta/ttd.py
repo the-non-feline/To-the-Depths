@@ -843,6 +843,8 @@ async def announce(self, report, author):
                 announcement_report.add(announcement) 
 
                 await announcement_report.send_self() 
+
+                report.add('Announced') 
             else: 
                 print('{} has no messageable channels'.format(guild.name)) 
 
@@ -1152,5 +1154,7 @@ async def send_logs(self, report, author, file_type):
         file_report.add(discord.File(filename)) 
 
         await file_report.send_self() 
+
+        report.add('Sent') 
     else: 
         report.add(f"{author.mention}, this file isn't sendable. ") 
