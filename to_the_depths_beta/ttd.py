@@ -581,7 +581,7 @@ async def shut_down(self, report, author):
     report.add('{} fainted! '.format(self.user.mention)) 
 
 async def creategame_args_check(self, report, author, *mentions): 
-    return await valid_mentions(self, report, author, 'mentions', *mentions) 
+    return await valid_mentions(self, report, author, 'mentions', *mentions) is not None
 
 @TTD_Bot.command('creategame', 'Creates a new game in the current channel, and invites all mentioned people plus the sender into the game', groups=('game',), indefinite_args=True, optional_args=('mentions',), special_args_check=creategame_args_check) 
 @commands.requires_no_game
@@ -920,18 +920,18 @@ async def donate_args_check(self, report, author, target, *to_donate):
     items = to_donate[::2] 
     amounts = to_donate[1::2] 
 
-    if await valid_mentions(self, report, author, 'target', target): 
+    if await valid_mentions(self, report, author, 'target', target) is not None: 
         corresponds = len(items) == len(amounts) 
 
         if not corresponds: 
             report.add(f'{author.mention}, each item must correspond with an amount. ') 
         else: 
             item_results = await valid_items(self, report, author, None, *items, 
-custom_error=f'{author.mention}, not all the items you specified are valid. ') 
+custom_error=f'{author.mention}, not all the items you specified are valid. ') is not None
             valid_amounts = ((amount.lower() == 'all' or (amount.isnumeric() and int(amount) > 0)) for amount in amounts) 
             all_valid_amounts = all(valid_amounts) 
 
-            if not all(valid_amounts): 
+            if not all_valid_amounts: 
                 report.add('{}, not all the amounts you specified are valid. Valid amounts are `all` and \
 whole numbers greater than 0. '.format(author.mention)) 
             
