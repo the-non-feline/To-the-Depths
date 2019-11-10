@@ -8,9 +8,10 @@ import os
 import copy
 # noinspection PyPackageRequirements
 import discord
-from . import chars, printing, reports, storage, ttd_tools, catalog, game as g, commands, help_articles
+from . import chars, printing, reports, storage, ttd_tools, catalog, game as g, commands, help_articles, args_checks
 from .chars import * 
 from .printing import print
+from .args_checks import * 
 
 '''
 add help message for when the user enters an invalid command
@@ -109,6 +110,7 @@ class TTD_Bot(discord.Client, storage.Deconstructable):
         return {
             'storage': self.storage_file_name, 
             'logs': self.logs_file_name, 
+            'shutdownstatus': self.safely_shutdown_file_name, 
         } 
     
     def channel_commands(self, channel): 
@@ -148,10 +150,6 @@ class TTD_Bot(discord.Client, storage.Deconstructable):
 
         self.listening = True
     ''' 
-
-    @staticmethod
-    async def default_special_args_check(self, report, author, *args): 
-        return True
     
     @classmethod
     def command(cls, name, description, special_note=None, groups=('other',), indefinite_args=False, required_args=(), optional_args=(), special_args_check=default_special_args_check): 
@@ -275,7 +273,7 @@ class TTD_Bot(discord.Client, storage.Deconstructable):
         await self.edit_tasks(-1) 
     ''' 
 
-    def decode_mentions(self, report, mentions): 
+    def decode_mentions(self, report, *mentions): 
         mentioned = [] 
 
         for mention in mentions: 
@@ -583,19 +581,14 @@ async def shut_down(self, report, author):
     report.add('{} fainted! '.format(self.user.mention)) 
 
 async def creategame_args_check(self, report, author, *mentions): 
-    actual_mentions = self.decode_mentions(report, mentions) 
-    
-    if None in actual_mentions: 
-        report.add('{}, argument `mentions` must contain all valid mentions. '.format(author.mention)) 
-    else: 
-        return True
+    return await valid_mentions(self, report, author, 'mentions', *mentions) 
 
 @TTD_Bot.command('creategame', 'Creates a new game in the current channel, and invites all mentioned people plus the sender into the game', groups=('game',), indefinite_args=True, optional_args=('mentions',), special_args_check=creategame_args_check) 
 @commands.requires_no_game
 @commands.modifying
 async def create_game(self, report, author, *mentions): 
     if hasattr(report.channel, 'guild'): 
-        to_invite = set(tuple(self.decode_mentions(report, mentions)) + (author,)) 
+        to_invite = set(tuple(self.decode_mentions(report, *mentions)) + (author,)) 
         
         new_game = g.Game(self, report.channel) 
 
@@ -613,7 +606,7 @@ async def create_game(self, report, author, *mentions):
 @commands.requires_player
 @commands.action
 async def invite_members(self, report, player, *mentions): 
-    to_invite = self.decode_mentions(report, mentions) 
+    to_invite = self.decode_mentions(report, *mentions) 
 
     await player.invite_members(report, to_invite) 
 
@@ -667,7 +660,7 @@ async def end_turn(self, report, player):
 @commands.requires_game
 async def display_players(self, report, game, author, *mentions): 
     if len(mentions) > 0: 
-        mentioned = self.decode_mentions(report, mentions) 
+        mentioned = self.decode_mentions(report, *mentions) 
     else: 
         mentioned = [author] 
     
@@ -683,7 +676,7 @@ async def display_players(self, report, game, author, *mentions):
 @commands.requires_game
 async def display_items(self, report, game, author, *mentions): 
     if len(mentions) > 0: 
-        mentioned = self.decode_mentions(report, mentions) 
+        mentioned = self.decode_mentions(report, *mentions) 
     else: 
         mentioned = [author] 
     
@@ -699,7 +692,7 @@ async def display_items(self, report, game, author, *mentions):
 @commands.requires_game
 async def display_enemies(self, report, game, author, *mentions): 
     if len(mentions) > 0: 
-        mentioned = self.decode_mentions(report, mentions) 
+        mentioned = self.decode_mentions(report, *mentions) 
     else: 
         mentioned = [author] 
     
@@ -715,12 +708,14 @@ async def display_enemies(self, report, game, author, *mentions):
             report.add('{} is not in this game. '.format(member.mention)) 
 
 async def gather_args_check(self, report, author, item): 
-    target_item = ttd_tools.search(catalog.items, item) 
+    item_results = await valid_items(self, report, author, 'item', item) 
 
-    if target_item is not None and target_item.gatherable(): 
-        return True
-    else: 
-        report.add('{}, argument `item` must be a gatherable item. '.format(author.mention)) 
+    if item_results: 
+        if not item_results[0].gatherable(): 
+            report.add(f'{author.mention}, argument `item` must be a gatherable item. Type \
+`{display_topics.name} items gatherables` to view a list of these. ') 
+        else: 
+            return True
 
 @TTD_Bot.command('gather', 'Attempts to gather the specified item', special_note='This command takes your move', groups=('items', 'movement'), required_args=('item',), special_args_check=gather_args_check) 
 @commands.requires_game
@@ -856,10 +851,7 @@ async def start_battle(self, report, player):
     await player.pick_fight(report) 
 
 async def coinflip_args_check(self, report, author, side): 
-    if side.lower() in ('heads', 'tails'): 
-        return True
-    else: 
-        report.add('{}, argument `side` can only be `heads` or `tails`. '.format(author.mention)) 
+    return await valid_side(self, report, author, 'side', side) 
 
 @TTD_Bot.command('call', 'Call a side in a coin flip to decide who gets the next battle turn', groups=('battle',), required_args=('side',), special_args_check=coinflip_args_check) 
 @commands.requires_game
@@ -878,15 +870,17 @@ async def attack(self, report, player):
     await player.switch_attack(report) 
 
 async def use_args_check(self, report, author, item, amount='1'): 
-    target_item = ttd_tools.search(catalog.items, item) 
+    item_results = await valid_items(self, report, author, 'item', item) 
+    int_amount = amount.lower() == 'auto' or await valid_amount(self, report, author, 'amount', amount) 
 
-    if target_item is not None and target_item.is_usable: 
-        if amount.lower() == 'auto' or (amount.isnumeric() and int(amount) > 0): 
-            return True
+    if item_results and int_amount: 
+        item_result = item_results[0] 
+
+        if not item_result.is_usable: 
+            report.add(f'{author.mention}, argument `item` must be a usable item. Type \
+`{display_topics.name} items usables` for a list of these. ') 
         else: 
-            report.add('{}, argument `amount` must either be `auto` or a whole number greater than 0. '.format(author.mention)) 
-    else: 
-        report.add('{}, argument `item` must be a usable item. '.format(author.mention)) 
+            return True
 
 @TTD_Bot.command('use', 'Uses the specified amount of the specified item', special_note='The amount can be auto-decided based on the item if amount is set to '
                         '`auto`. Omitting the amount makes it default to 1. ', groups=('items',), required_args=('item',), optional_args=('amount',), 
@@ -925,21 +919,23 @@ async def crash(self, report, author):
 async def donate_args_check(self, report, author, target, *to_donate): 
     items = to_donate[::2] 
     amounts = to_donate[1::2] 
-    
-    if None in self.decode_mentions(report, (target,)): 
-        report.add('{}, argument `target` must be a valid mention. '.format(author.mention)) 
-    elif len(items) != len(amounts): 
-        report.add('{}, each item must correspond with an amount. '.format(author.mention)) 
-    else: 
-        item_results = ttd_tools.bulk_search(catalog.items, items) 
-        valid_amounts = ((amount.lower() == 'all' or (amount.isnumeric() and int(amount) > 0)) for amount in amounts) 
 
-        if None in item_results: 
-            report.add('{}, not all the items you specified are valid. '.format(author.mention)) 
-        elif not all(valid_amounts): 
-            report.add('{}, not all the amounts you specified are valid. Valid amounts are `all` and whole numbers greater than 0. '.format(author.mention)) 
+    if await valid_mentions(self, report, author, 'target', target): 
+        corresponds = len(items) == len(amounts) 
+
+        if not corresponds: 
+            report.add(f'{author.mention}, each item must correspond with an amount. ') 
         else: 
-            return True
+            item_results = await valid_items(self, report, author, None, *items, 
+custom_error=f'{author.mention}, not all the items you specified are valid. ') 
+            valid_amounts = ((amount.lower() == 'all' or (amount.isnumeric() and int(amount) > 0)) for amount in amounts) 
+            all_valid_amounts = all(valid_amounts) 
+
+            if not all(valid_amounts): 
+                report.add('{}, not all the amounts you specified are valid. Valid amounts are `all` and \
+whole numbers greater than 0. '.format(author.mention)) 
+            
+            return item_results and all_valid_amounts
 
 def convert_donation(specified): 
     items = specified[::2] 
@@ -975,7 +971,7 @@ required_args=('target', 'item_1', 'amount_1'), optional_args=('item_2', 'amount
 @commands.requires_player
 @commands.requires_uo_game_turn
 async def whitelist_donate(self, report, player, target, *to_donate): 
-    mentions = self.decode_mentions(report, (target,)) 
+    mentions = self.decode_mentions(report, target) 
     
     mention = tuple(mentions)[0] 
     
@@ -1004,7 +1000,7 @@ optional_args=('item_1', 'amount_1', 'item_2', 'amount_2', '...'), special_args_
 @commands.requires_player
 @commands.requires_uo_game_turn
 async def blacklist_donate(self, report, player, target, *blacklist): 
-    mentions = self.decode_mentions(report, (target,)) 
+    mentions = self.decode_mentions(report, target) 
 
     mention = tuple(mentions)[0] 
 
@@ -1043,14 +1039,14 @@ async def move(self, report, player, direction):
     await player.change_levels(report, direction) 
 
 async def craft_args_check(self, report, author, item, amount): 
-    target_item = ttd_tools.search(catalog.items, item) 
+    item_results = await valid_items(self, report, author, 'item', item) 
+    amount_result = await valid_amount(self, report, author, 'amount', amount) 
 
-    if target_item is None or not target_item.craftable(): 
-        report.add('{}, argument `item` must be a craftable item. '.format(author.mention)) 
-    elif not amount.isnumeric() or int(amount) <= 0: 
-        report.add('{}, argument `amount` must be a whole number greater than 0. '.format(author.mention)) 
-    else: 
-        return True
+    if item_results and amount_result: 
+        if not item_results[0].craftable(): 
+            report.add('{}, argument `item` must be a craftable item. '.format(author.mention)) 
+        else: 
+            return True
 
 @TTD_Bot.command('craft', 'Crafts the specified amount of the specified item', special_note='This command takes your move', groups=('items', 'movement'), required_args=('item', ' \
                                                                                                                                          ''amount'), 
@@ -1074,14 +1070,14 @@ async def drag(self, report, player, direction):
         report.add("{} can't drag because they aren't a Diver. ".format(player.name)) 
 
 async def mine_args_check(self, report, author, item, side): 
-    target_item = ttd_tools.search(catalog.items, item) 
-    
-    if target_item is None or not target_item.is_a(catalog.Mineable): 
-        report.add(f'{author.mention}, argument `item` must be a valid mineable item. ') 
-    elif side.lower() not in ('heads', 'tails'): 
-        report.add(f'{author.mention}, argument `side` can only be `heads` or `tails`. ') 
-    else: 
-        return True
+    item_results = await valid_items(self, report, author, 'item', item) 
+    side_result = await valid_side(self, report, author, 'side') 
+
+    if item_results and side_result: 
+        if item_results[0].is_a(catalog.Mineable): 
+            report.add(f'{author.mention}, argument `item` must be a mineable item. ') 
+        else: 
+            return True
 
 @TTD_Bot.command('mine', 'Attempts to mine the specified item, calling the specified side', special_note=f'A {catalog.Shovel.name} or '
                                                                                                          f'{catalog.Big_Shovel.name} is required to '
