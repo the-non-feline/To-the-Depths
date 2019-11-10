@@ -1076,7 +1076,8 @@ async def mine_args_check(self, report, author, item, side):
 
     if item_results and side_result: 
         if not item_results[0].is_a(catalog.Mineable): 
-            report.add(f'{author.mention}, argument `item` must be a mineable item. ') 
+            report.add(f'{author.mention}, argument `item` must be a mineable item. Type \
+`{self.prefix(report.channel)}{display_topics.name} items mineables` for a list of these. ') 
         else: 
             return True
 
