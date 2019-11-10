@@ -35,8 +35,8 @@ def search(to_search, name):
 
     return None
 
-def bulk_search(to_search, names): 
-    return set((search(to_search, name) for name in names)) 
+def bulk_search(to_search, names, converter=set): 
+    return converter((search(to_search, name) for name in names)) 
 
 class Game_Object(storage.Deconstructable):
     def __init__(self, client, channel):

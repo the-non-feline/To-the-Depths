@@ -12,10 +12,10 @@ async def valid_mentions(self, report, author, arg_name, *mentions, custom_error
         return decoded
 
 async def valid_items(self, report, author, arg_name, *items, custom_error=None): 
-    item_results = ttd_tools.bulk_search(catalog.items, items) 
+    item_results = ttd_tools.bulk_search(catalog.items, items, converter=tuple) 
 
     if None in item_results: 
-        report.add(custom_error or f'{author.mention}, argument `{arg_name} must be valid item(s). ') 
+        report.add(custom_error or f'{author.mention}, argument `{arg_name}` must be valid item(s). ') 
     else: 
         return item_results
 

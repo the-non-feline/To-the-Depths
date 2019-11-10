@@ -941,7 +941,7 @@ def convert_donation(specified):
     items = specified[::2] 
     amounts = specified[1::2] 
 
-    items = (ttd_tools.search(catalog.items, item) for item in items) 
+    items = ttd_tools.bulk_search(catalog.items, items, converter=tuple) 
     
     donation_dict = {} 
     
@@ -1071,7 +1071,7 @@ async def drag(self, report, player, direction):
 
 async def mine_args_check(self, report, author, item, side): 
     item_results = await valid_items(self, report, author, 'item', item) 
-    side_result = await valid_side(self, report, author, 'side') 
+    side_result = await valid_side(self, report, author, 'side', side) 
 
     if item_results and side_result: 
         if item_results[0].is_a(catalog.Mineable): 
