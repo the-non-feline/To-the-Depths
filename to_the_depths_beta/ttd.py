@@ -713,7 +713,7 @@ async def gather_args_check(self, report, author, item):
     if item_results: 
         if not item_results[0].gatherable(): 
             report.add(f'{author.mention}, argument `item` must be a gatherable item. Type \
-`{display_topics.name} items gatherables` to view a list of these. ') 
+`{self.prefix(report.channel)}{display_topics.name} items gatherables` to view a list of these. ') 
         else: 
             return True
 
@@ -878,7 +878,7 @@ async def use_args_check(self, report, author, item, amount='1'):
 
         if not item_result.is_usable: 
             report.add(f'{author.mention}, argument `item` must be a usable item. Type \
-`{display_topics.name} items usables` for a list of these. ') 
+`{self.prefix(report.channel)}{display_topics.name} items usables` for a list of these. ') 
         else: 
             return True
 
@@ -1044,7 +1044,8 @@ async def craft_args_check(self, report, author, item, amount):
 
     if item_results and amount_result: 
         if not item_results[0].craftable(): 
-            report.add('{}, argument `item` must be a craftable item. '.format(author.mention)) 
+            report.add(f'{author.mention}, argument `item` must be a craftable item. Type \
+`{self.prefix(report.channel)}{display_topics.name} items craftables` for a list of these. ') 
         else: 
             return True
 
@@ -1074,7 +1075,7 @@ async def mine_args_check(self, report, author, item, side):
     side_result = await valid_side(self, report, author, 'side', side) 
 
     if item_results and side_result: 
-        if item_results[0].is_a(catalog.Mineable): 
+        if not item_results[0].is_a(catalog.Mineable): 
             report.add(f'{author.mention}, argument `item` must be a mineable item. ') 
         else: 
             return True
