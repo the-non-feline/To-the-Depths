@@ -61,6 +61,8 @@ def log(*values, sep=' ', end='\n', file=None):
         contents = file.read() 
         trimmed_contents = contents[len(contents) - MAX_SIZE:] 
 
+        print(trimmed_contents) 
+        
         clear_file(file) 
         file.write(trimmed_contents) 
 
