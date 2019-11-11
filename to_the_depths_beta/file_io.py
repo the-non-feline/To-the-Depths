@@ -44,8 +44,8 @@ MAX_SIZE = 8000000
 
 def log(*values, sep=' ', end='\n', file=sys.stdout): 
     #make this function restrict file size
-    print(file.seekable()) 
-    
+    print(file.seekable) 
+
     '''
     if file.seekable(): 
         file.seek(0, 2) 
