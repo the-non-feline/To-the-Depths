@@ -64,6 +64,8 @@ class TTD_Bot(discord.Client, storage.Deconstructable):
 
         discord.Client.__init__(self, status=self.status, activity=self.current_activity) 
         storage.Deconstructable.__init__(self) 
+
+        print('here') 
     
     def prefix(self, channel): 
         return self.default_prefix
