@@ -6,9 +6,9 @@ import discord
 import logging
 import asyncio
 import copy
-from . import chars, printing, storage, ttd_tools
+from . import chars, file_io, storage, ttd_tools
 from .chars import * 
-from .printing import print
+from .file_io import log
 from .ttd_tools import format_iterable, make_list
 
 '''
@@ -97,11 +97,11 @@ def action(func):
     async def action_func(self, report, *args, **kwargs): 
         if self.is_a(Entity): 
             async with self.acting(report): 
-                print('executing {}'.format(func)) 
+                log('executing {}'.format(func)) 
 
                 result = await func(self, report, *args, **kwargs) 
 
-                print('finished executing {}'.format(func)) 
+                log('finished executing {}'.format(func)) 
 
                 return result
         else: 
@@ -229,7 +229,7 @@ class Levels(enum.Enum):
             running_sum += amount
 
             if running_sum >= index: 
-                print(creature) 
+                #log(creature) 
 
                 return creature
     
@@ -981,7 +981,7 @@ class Bio_Reactor(Item):
     is_usable = True
     
     async def can_use(self, report, amount): 
-        print('b') 
+        log('b') 
         
         has_accepts_gen = (self.owner.has_item(item) for item in self.accepts) 
         
@@ -991,7 +991,7 @@ class Bio_Reactor(Item):
             return True
     
     async def on_use(self, report, amount): 
-        print('a') 
+        log('a') 
         
         acceptable_items = [item.name for item in self.accepts if self.owner.has_item(item)] 
         
@@ -1330,12 +1330,12 @@ class Entity(Events):
             async def __aenter__(self): 
                 self.entity.current_actions += 1
 
-                print('{} is now running {} actions'.format(self.entity.name, self.entity.current_actions)) 
+                log('{} is now running {} actions'.format(self.entity.name, self.entity.current_actions)) 
             
             async def __aexit__(self, typ, value, traceback): 
                 self.entity.current_actions -= 1
 
-                print('{} is now running {} actions'.format(self.entity.name, self.entity.current_actions)) 
+                log('{} is now running {} actions'.format(self.entity.name, self.entity.current_actions)) 
 
                 if self.entity.current_actions == 0: 
                     if self.entity.dead: 
@@ -2212,12 +2212,12 @@ class Player(Commander, metaclass=Player_Meta, append=False):
             async def __aenter__(self): 
                 self.entity.current_actions += 1
 
-                print('{} is now running {} actions'.format(self.entity.name, self.entity.current_actions)) 
+                log('{} is now running {} actions'.format(self.entity.name, self.entity.current_actions)) 
             
             async def __aexit__(self, typ, value, traceback): 
                 self.entity.current_actions -= 1
 
-                print('{} is now running {} actions'.format(self.entity.name, self.entity.current_actions)) 
+                log('{} is now running {} actions'.format(self.entity.name, self.entity.current_actions)) 
         
         return Acting() 
     ''' 
@@ -2542,36 +2542,36 @@ class Player(Commander, metaclass=Player_Meta, append=False):
     async def on_death(self, report): 
         self.current_hp = 0
 
-        print(1) 
+        #log(1) 
 
         await self.hp_changed(None) 
 
-        print(2) 
+        #log(2) 
 
         report.add('{} died! '.format(self.name)) 
 
-        print(3) 
+        #log(3) 
 
         if self.enemy is not None: 
             async with self.enemy.acting(report): 
-                print(4) 
+                #log(4) 
 
                 await self.end_battle_turn(report) 
 
-                print(5) 
+                #log(5) 
                 
                 enemy = self.enemy
 
                 await self.leave_battle(report) 
 
-                print(6) 
+                #log(6) 
                 
                 if enemy.is_a(Player): 
                     await enemy.earn_items(report, self.items) 
                 
-                print(7) 
+                #log(7) 
         
-        print(8) 
+        #log(8) 
         
         saved_items = tuple(((item.__name__, amount) for item, amount in self.saved_items)) 
 
@@ -2579,11 +2579,11 @@ class Player(Commander, metaclass=Player_Meta, append=False):
             'saved_items': saved_items, 
         } 
 
-        print(9) 
+        #log(9) 
 
         await self.game.remove_player(report, self) 
 
-        print(10) 
+        #log(10) 
 
         '''
         for item_class, amount in self.saved_items:
@@ -2613,11 +2613,11 @@ class Player(Commander, metaclass=Player_Meta, append=False):
                 # the revived self replaces the old self
             new_self = chosen_class(client=self.client, channel=self.channel, name=self.name, member_id=self.member_id, game=self.game)
 
-            print('new self has been created')
+            log('new self has been created')
 
             self.game.players[own_index] = new_self
 
-            print('new self has replaced old self')
+            log('new self has replaced old self')
 
             # saved items and blubber base are transferred to new self
             await new_self.receive_items(self.saved_items)
@@ -2834,7 +2834,7 @@ thumbs_down_emoji), timeout=10, default_emoji=thumbs_down_emoji)
     
     @action
     async def switch_attack(self, report): 
-        print('{} is now attacking {}'.format(self.name, self.enemy.name)) 
+        #log('{} is now attacking {}'.format(self.name, self.enemy.name)) 
 
         async with self.enemy.acting(report): 
             await self.attack(report, self.enemy) 
@@ -2845,11 +2845,11 @@ thumbs_down_emoji), timeout=10, default_emoji=thumbs_down_emoji)
     async def fight_creature(self, report, surprise_attack=False): 
         creature = await self.current_level.select_creature() 
 
-        #print(creature.__init__) 
+        #log(creature.__init__) 
 
         to_fight = creature(self.client, self.channel, self, current_level=self.current_level) 
 
-        print('{} is now starting battle with {}'.format(self.name, to_fight.name)) 
+        #log('{} is now starting battle with {}'.format(self.name, to_fight.name)) 
         
         await self.start_battle(report, to_fight, surprise_attack=surprise_attack) 
     
@@ -2995,7 +2995,7 @@ early? ')
     
     @action
     async def battle_call(self, report, side): 
-        print('{} is now calling against {}'.format(self.name, self.enemy.name)) 
+        #log('{} is now calling against {}'.format(self.name, self.enemy.name)) 
 
         async with self.enemy.acting(report): 
             await self.on_global_event(report, 'battle_round_start') 

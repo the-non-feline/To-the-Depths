@@ -1,12 +1,12 @@
 import copy
-from . import printing
-from .printing import print
+from . import file_io
+from .file_io import log
 
 class D_Meta(type): 
     def __repr__(cls): 
         type_repr = type.__repr__(cls) 
         
-        print(type_repr) 
+        #log(type_repr) 
         
         class_name = type_repr[8:len(type_repr) - 2] 
         
@@ -41,15 +41,15 @@ class Deconstructable(metaclass=D_Meta):
     def deconstruct(self):
         deconstructed = self.__dict__.copy()
 
-        print('Pre-modification info for {} below: '.format(self))
-        print('self.__dict__ = {}'.format(self.__dict__))
-        print('deconstructed = {}'.format(deconstructed))
+        log('Pre-modification info for {} below: '.format(self))
+        log('self.__dict__ = {}'.format(self.__dict__))
+        log('deconstructed = {}'.format(deconstructed))
 
         self.modify_deconstructed(deconstructed)
 
-        print('Post-modification info for {} below: '.format(self))
-        print('self.__dict__ = {}'.format(self.__dict__))
-        print('deconstructed = {}'.format(deconstructed))
+        log('Post-modification info for {} below: '.format(self))
+        log('self.__dict__ = {}'.format(self.__dict__))
+        log('deconstructed = {}'.format(deconstructed))
 
         return deconstructed
 

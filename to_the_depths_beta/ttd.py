@@ -8,53 +8,15 @@ import os
 import copy
 # noinspection PyPackageRequirements
 import discord
-from . import chars, printing, reports, storage, ttd_tools, catalog, game as g, commands, help_articles, args_checks
+from . import chars, file_io, reports, storage, ttd_tools, catalog, game as g, commands, help_articles, args_checks
 from .chars import * 
-from .printing import print
+from .file_io import *
 from .args_checks import * 
 
 '''
 add help message for when the user enters an invalid command
 fix TTD_Bot.prompt_for_message() to return the original message instead of the lowercase version
 ''' 
-
-def clear_file(file):
-    file.seek(0)
-    file.truncate(0)
-
-    print('cleared') 
-
-def text_dump(file, thing): 
-    thing = str(thing) 
-    
-    print('thing = {}'.format(thing)) 
-
-    clear_file(file) 
-    
-    file.write(thing) 
-    
-    file.flush()
-    os.fsync(file.fileno()) 
-
-    print('successfully dumped') 
-
-def text_load(file, default): 
-    file.seek(0) 
-    
-    contents = file.read() 
-    
-    print(contents) 
-    
-    if len(contents) > 0: 
-        result = eval(contents) 
-        
-        print(result) 
-        
-        return result
-    else: 
-        print('empty') 
-
-        return default
 
 class TTD_Bot(discord.Client, storage.Deconstructable): 
     command_groups = ('other', 'battle', 'items', 'game', 'movement', 'helpful', 'player') 
@@ -72,10 +34,10 @@ class TTD_Bot(discord.Client, storage.Deconstructable):
     } 
 
     #help stuff
-    #print(catalog.levels) 
-    #print(catalog.items) 
-    #print(catalog.classes) 
-    #print(catalog.creatures) 
+    #log(catalog.levels) 
+    #log(catalog.items) 
+    #log(catalog.classes) 
+    #log(catalog.creatures) 
 
     def __init__(self, storage_file_name, safely_shutdown_file_name, owner_id, default_prefix, logs_file_name=None): 
         self.owner_id = owner_id
@@ -183,7 +145,7 @@ class TTD_Bot(discord.Client, storage.Deconstructable):
         return decorator
 
     async def change_presence(self, **kwargs): 
-        #print(kwargs) 
+        #log(kwargs) 
 
         self.status = status = kwargs.get('status', self.status) 
         self.current_activity = activity = kwargs.get('activity', self.current_activity) 
@@ -191,7 +153,7 @@ class TTD_Bot(discord.Client, storage.Deconstructable):
 
         await discord.Client.change_presence(self, status=status, activity=activity, afk=afk) 
 
-        print('successfully changed status to {}, activity to {}, and afk to {}'.format(self.status, self.current_activity, self.afk)) 
+        log('successfully changed status to {}, activity to {}, and afk to {}'.format(self.status, self.current_activity, self.afk)) 
     
     async def load(self): 
         with self.tuning_out(): 
@@ -203,18 +165,18 @@ class TTD_Bot(discord.Client, storage.Deconstructable):
                 if channel is not None: 
                     self.game_data[channel_id] = reconstructed_game = self.reconstruct(game_info, self, channel)  
                     
-                    print('{} in {}'.format(reconstructed_game, reconstructed_game.channel.name)) 
+                    log('{} in {}'.format(reconstructed_game, reconstructed_game.channel.name)) 
                 else: 
                     del self.game_data[channel_id] 
 
-                    print(f'channel with id {channel_id} is no longer accessible, game with data \
+                    log(f'channel with id {channel_id} is no longer accessible, game with data \
 {game_info} was deleted') 
             
             await self.do_on_turn_on() 
 
             await self.save() 
 
-            print('successfully loaded') 
+            log('successfully loaded') 
             
             self.needs_reloading = False
     
@@ -233,33 +195,33 @@ class TTD_Bot(discord.Client, storage.Deconstructable):
 
             text_dump(self.safely_shutdown_file, safely_shutdown) 
 
-            print('successfully saved') 
+            log('successfully saved') 
 
             self.needs_saving = False
 
     async def edit_tasks(self, amount):
         self.tasks += amount
 
-        print('now running {} tasks'.format(self.tasks))
+        log('now running {} tasks'.format(self.tasks))
 
         if self.tasks == 0: 
-            print('all tasks done') 
+            log('all tasks done') 
 
             if self.needs_reloading: 
-                print('reloading') 
+                log('reloading') 
 
                 await self.load() 
             elif self.needs_saving: 
-                print('saving') 
+                log('saving') 
 
                 await self.save() 
 
             if self.shutting_down: 
-                print('all tasks done, will now shut down') 
+                log('all tasks done, will now shut down') 
 
                 await self.logout() 
             else: 
-                print('nothing to do here now') 
+                log('nothing to do here now') 
 
                 await self.change_presence(status=discord.Status.online, activity=discord.Game('To the Depths')) 
     
@@ -301,7 +263,7 @@ class TTD_Bot(discord.Client, storage.Deconstructable):
             client = self
 
             def __init__(self, status=client.status, activity=client.current_activity, afk=client.afk): 
-                #print(kwargs) 
+                #log(kwargs) 
 
                 self.old_status = self.client.status
                 self.old_activity = self.client.current_activity
@@ -313,12 +275,12 @@ class TTD_Bot(discord.Client, storage.Deconstructable):
             async def __aenter__(self): 
                 await self.client.change_presence(status=self.new_status, activity=self.new_activity, afk=self.new_afk) 
 
-                print('temporarily changed to new presence') 
+                log('temporarily changed to new presence') 
             
             async def __aexit__(self, typ, value, traceback): 
                 await self.client.change_presence(status=self.old_status, activity=self.old_activity, afk=self.old_afk) 
 
-                print('switched back to old presence') 
+                log('switched back to old presence') 
         
         return Pulse_Presence(**kwargs) 
     
@@ -329,12 +291,12 @@ class TTD_Bot(discord.Client, storage.Deconstructable):
             def __enter__(self): 
                 self.client.listening = False
 
-                print('tuned out') 
+                log('tuned out') 
             
             def __exit__(self, typ, value, traceback): 
                 self.client.listening = True
 
-                print('tuned back in') 
+                log('tuned back in') 
         
         return Tuning_Out() 
     
@@ -351,7 +313,7 @@ class TTD_Bot(discord.Client, storage.Deconstructable):
             async def __aenter__(self): 
                 await self.client.edit_tasks(1) 
 
-                print('handling: {}'.format(self.message.content)) 
+                log('handling: {}'.format(self.message.content)) 
 
                 return self.report
             
@@ -370,7 +332,7 @@ highly trained {}s has been dispatched to deal with this situation. '.format(sel
                     
                     await self.report.send_self() 
                 finally: 
-                    print('finished handling: {}'.format(self.message.content)) 
+                    log('finished handling: {}'.format(self.message.content)) 
 
                     await self.client.edit_tasks(-1) 
         
@@ -386,7 +348,7 @@ highly trained {}s has been dispatched to deal with this situation. '.format(sel
         should_continue = text_load(self.safely_shutdown_file, False) 
 
         if should_continue: 
-            print('doing on_turn_ons') 
+            log('doing on_turn_ons') 
 
             for channel_id, game in self.game_data.items(): 
                 report = reports.Report(self, game.channel) 
@@ -402,7 +364,7 @@ highly trained {}s has been dispatched to deal with this situation. '.format(sel
 
         self.listening = True
 
-        print('IM READY AF')
+        log('IM READY AF')
 
     async def logout(self):
         '''
@@ -414,18 +376,18 @@ highly trained {}s has been dispatched to deal with this situation. '.format(sel
 
         await self.do_on_shutdown() 
 
-        print('a') 
+        log('a') 
 
         self.storage_file.close() 
 
-        print('b') 
+        log('b') 
 
         self.safely_shutdown_file.close() 
 
-        print('c') 
+        log('c') 
 
         if self.logs_file_name: 
-            print('d') 
+            log('d') 
 
             self.logs_file.close() 
 
@@ -436,7 +398,7 @@ highly trained {}s has been dispatched to deal with this situation. '.format(sel
         try: 
             return await to_do
         except discord.errors.Forbidden: 
-            print('{} was forbidden'.format(to_do)) 
+            log('{} was forbidden'.format(to_do)) 
 
     async def prompt_for_message(self, report, member_id, choices=None, custom_check=lambda to_check: True, timeout=None, default_choice=None): 
         channel = report.channel
@@ -461,10 +423,10 @@ highly trained {}s has been dispatched to deal with this situation. '.format(sel
         def check(to_check): 
             valid_choice = choices is None or any(((to_check.content.lower() == choice.lower()) for choice in choices)) 
             
-            print(to_check.channel.id == channel.id) 
-            print(to_check.author.id == member_id) 
-            print(valid_choice) 
-            print(custom_check(to_check)) 
+            #log(to_check.channel.id == channel.id) 
+            #log(to_check.author.id == member_id) 
+            #log(valid_choice) 
+            #log(custom_check(to_check)) 
             
             return to_check.channel.id == channel.id and to_check.author.id == member_id and valid_choice and custom_check(to_check) 
 
@@ -859,7 +821,7 @@ async def announce(self, report, author):
 
                 report.add('Announced') 
             else: 
-                print('{} has no messageable channels'.format(guild.name)) 
+                log('{} has no messageable channels'.format(guild.name)) 
 
 @TTD_Bot.command('fight', 'Starts a battle with a random creature from your current level', special_note='This command takes your move', groups=('battle', 'movement')) 
 @commands.requires_game
@@ -930,7 +892,7 @@ async def attempt_flee(self, report, player):
 async def crash(self, report, author): 
     report.add('crashing! ') 
 
-    print('crashing! ') 
+    log('crashing! ') 
 
     raise ZeroDivisionError('test') 
 
@@ -1005,7 +967,7 @@ async def whitelist_donate(self, report, player, target, *to_donate):
             
             donation = [(item, amount) for item, amount in donation_dict.items()] 
             
-            print(donation) 
+            #log(donation) 
 
             await player.whitelist_donate(report, donate_to, donation) 
     else: 

@@ -1,6 +1,6 @@
 import discord
-from . import printing, ttd_tools
-from .printing import print
+from . import file_io, ttd_tools
+from .file_io import log
 from .ttd_tools import format_iterable
 
 '''
@@ -23,7 +23,7 @@ class Command:
         self.channel = channel
         self.total_args = list(self.required_args) + ['[{}]'.format(arg) for arg in self.optional_args] 
 
-        #print(self.total_args) 
+        #log(self.total_args) 
 
         if self.indefinite_args: 
             self.total_args[-1] = '*{}'.format(self.total_args[-1]) 
@@ -87,8 +87,8 @@ class Command:
         return valid
     
     async def run(self, report, author, args): 
-        #print(self.func) 
-        #print(self.special_args_check) 
+        #log(self.func) 
+        #log(self.special_args_check) 
 
         if await self.check_args(report, author, args): 
             return await self.__class__.func(self.client, report, author, *args) 
@@ -165,7 +165,7 @@ def modifying(func):
         except: 
             self.needs_reloading = True
 
-            print('error, client now needs reloading') 
+            log('error, client now needs reloading') 
 
             report.add(f'An epic error occurred, the bot will reload from the last save point so that \
 everything is good. ')
@@ -176,7 +176,7 @@ everything is good. ')
         else: 
             self.needs_saving = True
 
-            print('successful, client now needs saving') 
+            log('successful, client now needs saving') 
 
             return result
     

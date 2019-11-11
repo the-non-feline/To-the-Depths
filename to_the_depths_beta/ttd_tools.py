@@ -1,7 +1,7 @@
 import discord
-from . import chars, printing, storage
+from . import chars, file_io, storage
 from .chars import * 
-from .printing import print
+from .file_io import log
 
 def make_list(list_items, numbered=False):
     to_join = list(list_items)
@@ -26,8 +26,8 @@ def search(to_search, name):
 
     for thing in to_search: 
         '''
-        print('thing.name = {}'.format(thing.name.lower()))
-        print('name = {}'.format(name.lower())) 
+        log('thing.name = {}'.format(thing.name.lower()))
+        log('name = {}'.format(name.lower())) 
         ''' 
 
         if thing.name.lower() == query: 
