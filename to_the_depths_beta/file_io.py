@@ -48,18 +48,15 @@ def log(*values, sep=' ', end='\n', file=None):
     print(file) 
     #make this function restrict file size
 
-    '''
     if file.seekable(): 
         file.seek(0, 2) 
-    ''' 
     
     try: 
         print('{}{} - '.format('\n', time.asctime()), end='', file=file, flush=True) 
         print(*values, sep=sep, end=end, file=file, flush=True) 
     except UnicodeEncodeError: 
         log("couldn't print that for some reason") 
-    
-    '''
+
     if file.seekable() and file.readable() and file.tell() > MAX_SIZE: 
         file.seek(0) 
 
@@ -72,4 +69,3 @@ def log(*values, sep=' ', end='\n', file=None):
         file.seek(0, 2) 
 
         file.flush() 
-    ''' 
