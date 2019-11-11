@@ -2908,10 +2908,12 @@ early? ')
         else: 
             report.add(f"{self.name} didn't end their turn early. ") 
     
+    '''
     @action
     async def invite_members(self, report, members): 
         for member in members: 
             await self.game.add_member(report, member) 
+    ''' 
     
     @action
     async def start_game(self, report): 

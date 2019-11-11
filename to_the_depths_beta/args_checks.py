@@ -16,6 +16,7 @@ async def valid_items(self, report, author, arg_name, *items, custom_error=None)
 
     if None in item_results: 
         report.add(custom_error or f'{author.mention}, argument `{arg_name}` must be valid item(s). ') 
+        report.add('Trying to specify items with spaces? Replace the spaces with underscores (`_`). ') 
     else: 
         return item_results
 

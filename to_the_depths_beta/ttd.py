@@ -601,14 +601,31 @@ async def create_game(self, report, author, *mentions):
     else: 
         report.add('Games cannot be created in DM channels. ') 
 
-@TTD_Bot.command('invite', 'Invites all mentioned people into the game', groups=('game',), indefinite_args=True, required_args=('mentions',), special_args_check=creategame_args_check) 
+@TTD_Bot.command('invite', 'Invites all mentioned people into the game', special_note='You must be in the \
+players list or queue to invite', groups=('game',), indefinite_args=True, required_args=('mentions',), 
+special_args_check=creategame_args_check) 
 @commands.requires_game
-@commands.requires_player
-@commands.action
-async def invite_members(self, report, player, *mentions): 
-    to_invite = self.decode_mentions(report, *mentions) 
+@commands.modifying
+async def invite_members(self, report, game, author, *mentions): 
+    if game.has_power(author.id): 
+        to_invite = self.decode_mentions(report, *mentions) 
 
-    await player.invite_members(report, to_invite) 
+        await game.invite_members(report, to_invite) 
+    else: 
+        report.add(f"{author.mention}, you have to be in the players list or queue to invite people. ") 
+
+@TTD_Bot.command('kick', 'Kicks all mentioned people from the **queue**', special_note='You must be in the \
+players list or queue to kick', groups=('game',), indefinite_args=True, required_args=('mentions',), 
+special_args_check=creategame_args_check) 
+@commands.requires_game
+@commands.modifying
+async def kick_members(self, report, game, author, *mentions): 
+    if game.has_power(author.id): 
+        to_kick = self.decode_mentions(report, *mentions) 
+
+        await game.remove_members(report, to_kick) 
+    else: 
+        report.add(f"{author.mention}, you have to be in the players list or queue to kick people. ")
 
 async def enter_args_check(self, report, author, class_choice): 
     target_class = ttd_tools.search(catalog.classes, class_choice) 
@@ -731,6 +748,7 @@ async def help_args_check(self, report, author, *topics):
 
     if None in results: 
         report.add('{}, argument `topics` must contain all valid help topics. '.format(author.mention)) 
+        report.add(f'Trying to look up something with spaces? Replace spaces with underscores (`_`). ') 
     else: 
         return True
 

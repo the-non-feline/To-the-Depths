@@ -143,7 +143,7 @@ class Game(ttd_tools.Game_Object):
         if player is not None:
             report.add('{} is already in the game, as {}. '.format(member.mention, player.name))
         elif member.id in self.queue:
-            report.add('{} is already in the queue. '.format(member.mention))
+            report.add('{} is already in the queue. '.format(member.mention)) 
         else: 
             self.queue.append(member.id) 
             
@@ -153,27 +153,30 @@ class Game(ttd_tools.Game_Object):
             report.add('{} was not added as bots are not allowed in games. '.format(member.mention)) 
         ''' 
     
+    async def invite_members(self, report, members): 
+        for member in members: 
+            await self.add_member(report, member) 
+    
     async def add_player(self, report, member, class_choice): 
         if member.id in self.queue: 
-            self.queue.remove(member.id) 
-            
             chosen_class = ttd_tools.search(catalog.classes, class_choice) 
 
             new_player = chosen_class(self.client, self.channel, self, member_id=member.id) 
 
+            if self.current_turn_index >= 0: 
+                index = self.current_turn_index
+                
+                # increments current_turn_index to account for player inserted before
+                self.current_turn_index += 1
+            else: 
+                # choose a random position to insert the new player into
+                index = random.randint(0, len(self.players)) 
+
+            self.players.insert(index, new_player) 
+            self.queue.remove(member.id) 
+
             async with new_player.acting(report): 
                 await new_player.on_life_start(report) 
-
-                if self.current_turn_index >= 0: 
-                    index = self.current_turn_index
-                    
-                    # increments current_turn_index to account for player inserted before
-                    self.current_turn_index += 1
-                else: 
-                    # choose a random position to insert the new player into
-                    index = random.randint(0, len(self.players)) 
-
-                self.players.insert(index, new_player) 
                 
                 report.add('Success! {} joined the game. '.format(member.mention)) 
         else:
@@ -197,11 +200,14 @@ class Game(ttd_tools.Game_Object):
         else: 
             report.add("{} is not in this game's queue. ".format(member.mention)) 
     
+    async def remove_members(self, report, members): 
+        for member in members: 
+            await self.remove_member(report, member) 
+    
     async def start(self, report): 
         if self.current_turn_index >= 0: 
             report.add('The game has already started. ') 
         else:
-            # shuffle the players so it's not restricted to the order that they joined
             report.add('Starting! ') 
 
             await self.next_turn(report) 
