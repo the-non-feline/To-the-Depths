@@ -1303,6 +1303,7 @@ class Entity(Events):
 
         self.current_actions = 0
         self.dead = False
+        self.priority_death = False
 
         Events.__init__(self, client, channel) 
     
@@ -1563,6 +1564,7 @@ attacking {self.name}')
             await self.on_death(report) 
         finally: 
             self.dead = False
+            self.priority_death = False
     
     @action
     async def hp_changed(self, report): 
@@ -2020,9 +2022,6 @@ class Player(Commander, metaclass=Player_Meta, append=False):
         self.o_game_turn = False
         self.uo_game_turn = False
         self.can_move = False
-
-        self.suiciding = False
-        # players cannot do anything at all when dead
 
         Commander.__init__(self, client, channel, current_level=Levels.Surface) 
     
@@ -2586,10 +2585,6 @@ class Player(Commander, metaclass=Player_Meta, append=False):
 
         print(10) 
 
-        self.suiciding = False
-
-        print(11) 
-
         '''
         for item_class, amount in self.saved_items:
             item_class().salvage(self, amount) 
@@ -2652,6 +2647,7 @@ thumbs_down_emoji), timeout=10, default_emoji=thumbs_down_emoji)
 
         if emoji == thumbs_up_emoji: 
             self.dead = True
+            self.priority_death = True
 
             report.add('{} suicides! '.format(self.name)) 
         else: 
@@ -3077,12 +3073,16 @@ full HP before they can use it again')
 
         await self.hp_changed(None) 
 
-        if self.enemy is not None and not self.enemy.dead: 
+        if self.priority_death: 
+            report.add(f"{self.name} is so dead that Berserker Mode broke! ") 
+
+            await Player.on_death(self, report) 
+        elif self.enemy is not None and not self.enemy.dead: 
             if self.can_revive: 
                 async with self.enemy.acting(report): 
                     await self.end_battle_turn(report) 
                     
-                    report.add('{0} is so triggered that they did not die immediately. {0} enters Berserker Mode and goes for a final hit! '.format(self.name)) 
+                    report.add("{0} is so triggered that they don't die immediately. {0} enters Berserker Mode and goes for a final hit! ".format(self.name)) 
 
                     await self.switch_hit(report, self.enemy) 
 
@@ -3092,8 +3092,6 @@ full HP before they can use it again')
                         report.add("{} is so happy about killing {} that they revived with 1 HP! ".format(self.name, self.enemy.name)) 
 
                         await self.hp_changed(report) 
-
-                        self.suiciding = False
 
                         self.can_revive = False
 
@@ -3107,6 +3105,8 @@ full HP before they can use it again')
 
                 await Player.on_death(self, report) 
         else: 
+            report.add(f"{self.name} couldn't use Berserker Mode as they weren't fighting a living enemy. ") 
+
             await Player.on_death(self, report) 
 
 class Fisherman(Player):
