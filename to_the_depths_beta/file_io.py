@@ -40,7 +40,7 @@ def text_load(file, default):
 
         return default
 
-MAX_SIZE = 8000000
+MAX_SIZE = 1000000
 
 def log(*values, sep=' ', end='\n', file=None): 
     file = file or sys.stdout
