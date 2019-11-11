@@ -44,8 +44,10 @@ MAX_SIZE = 8000000
 
 def log(*values, sep=' ', end='\n', file=sys.stdout): 
     #make this function restrict file size
+    '''
     if file.seekable(): 
         file.seek(0, 2) 
+    ''' 
     
     try: 
         print('{}{} - '.format('\n', time.asctime()), end='', file=file, flush=True) 
