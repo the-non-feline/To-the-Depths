@@ -2639,8 +2639,8 @@ class Player(Commander, metaclass=Player_Meta, append=False):
     
     @action
     async def suicide(self, report): 
-        report.add(f'{self.mention}, suiciding will instantly kill your character. You will lose \
-**everything** that you have on you right now. ARE YOU SURE? ') 
+        report.add(f'{self.mention}, suiciding will bypass all abilities to **certainly** and instantly kill \
+your character. You will lose **everything** that you have on you right now. **ARE YOU SURE?** ') 
 
         emoji = await self.client.prompt_for_reaction(report, self.member_id, emojis=(thumbs_up_emoji, 
 thumbs_down_emoji), timeout=10, default_emoji=thumbs_down_emoji) 
