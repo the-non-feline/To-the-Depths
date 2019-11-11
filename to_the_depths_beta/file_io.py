@@ -40,7 +40,7 @@ def text_load(file, default):
 
         return default
 
-MAX_SIZE = 1000000
+MAX_SIZE = 500000
 
 def log(*values, sep=' ', end='\n', file=None): 
     file = file or sys.stdout
@@ -53,19 +53,19 @@ def log(*values, sep=' ', end='\n', file=None):
         print('{}{} - '.format('\n', time.asctime()), end='', file=file, flush=True) 
         print(*values, sep=sep, end=end, file=file, flush=True) 
     except UnicodeEncodeError: 
-        log("couldn't print that for some reason") 
+        log("couldn't print that for some reason", file=file) 
 
     if file.seekable() and file.readable() and file.tell() > MAX_SIZE: 
         file.seek(0) 
 
         contents = file.read() 
         trimmed_contents = contents[len(contents) - MAX_SIZE:] 
-
-        print(trimmed_contents) 
         
         clear_file(file) 
         file.write(trimmed_contents) 
 
         file.seek(0, 2) 
+
+        log(len(trimmed_contents), file=file) 
 
         file.flush() 
