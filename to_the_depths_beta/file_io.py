@@ -53,6 +53,7 @@ def log(*values, sep=' ', end='\n', file=sys.stdout):
     except UnicodeEncodeError: 
         log("couldn't print that for some reason") 
     
+    '''
     if file.seekable() and file.readable() and file.tell() > MAX_SIZE: 
         file.seek(0) 
 
@@ -65,3 +66,4 @@ def log(*values, sep=' ', end='\n', file=sys.stdout):
         file.seek(0, 2) 
 
         file.flush() 
+    ''' 
