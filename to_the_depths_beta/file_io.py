@@ -43,7 +43,7 @@ def text_load(file, default):
 MAX_SIZE = 8000000
 
 def log(*values, sep=' ', end='\n', file=sys.stdout): 
-    print(sys.stdout) 
+    print(file) 
     #make this function restrict file size
 
     '''
