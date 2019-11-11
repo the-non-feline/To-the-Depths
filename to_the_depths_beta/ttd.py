@@ -60,7 +60,7 @@ class TTD_Bot(discord.Client, storage.Deconstructable):
 
         self.client = self
         
-        sys.stderr = sys.stdout = self.logs_file
+        sys.stdout = self.logs_file
 
         discord.Client.__init__(self, status=self.status, activity=self.current_activity) 
         storage.Deconstructable.__init__(self) 
