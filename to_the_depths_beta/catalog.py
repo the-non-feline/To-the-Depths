@@ -4120,7 +4120,8 @@ class Vortex_Fish(Entity):
         await Entity.switch_hit(self, report, target) 
 
         # noinspection PyRedundantParentheses
-        await self.attempt_steal(report, target) 
+        if target.is_a(Player): 
+            await self.attempt_steal(report, target) 
 
 class C_Vortex_Fish(Vortex_Fish, Creature): 
     starting_drops = {Meat: 4,} 
