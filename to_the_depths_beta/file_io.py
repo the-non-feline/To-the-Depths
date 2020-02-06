@@ -58,9 +58,11 @@ class Max_Size_Handler(logging.StreamHandler):
         file = self.stream
 
         if file.seekable() and file.readable() and file.tell() > self.max_size: 
-            file.seek(-self.max_size, 2) 
+            file.seek(0) 
 
             contents = file.read() 
+
+            trimmed_contents = contents[len(contents) - self.max_size - 1:]
             
             clear_file(file, should_log=False) 
             file.write(trimmed_contents) 
