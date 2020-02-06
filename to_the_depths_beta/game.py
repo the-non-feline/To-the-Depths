@@ -4,7 +4,7 @@ import logging
 # noinspection PyPackageRequirements
 import discord
 from . import custom_contextlib as contextlib, file_io, ttd_tools, catalog
-from .file_io import log
+from .file_io import debug
 from .ttd_tools import format_iterable
 
 '''

@@ -1,6 +1,6 @@
 import discord
 from . import file_io
-from .file_io import log
+from .file_io import debug
 
 class Report: 
     def __init__(self, client, channel): 
@@ -12,7 +12,7 @@ class Report:
         if len(texts) > 0 or embed is not None or file is not None: 
             sent_messages.append(await self.client.do(self.channel.send(content='\n'.join(texts), embed=embed, file=file))) 
 
-            #log('there') 
+            #debug('there') 
 
             texts.clear() 
     
@@ -28,7 +28,7 @@ class Report:
             if isinstance(message, discord.Embed): 
                 await self.send_message(sent_messages, to_send, embed=message) 
             elif isinstance(message, discord.File): 
-                #log('here') 
+                #debug('here') 
 
                 await self.send_message(sent_messages, to_send, file=message) 
             else: 

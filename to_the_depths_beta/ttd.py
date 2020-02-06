@@ -34,10 +34,12 @@ class TTD_Bot(discord.Client, storage.Deconstructable):
     } 
 
     #help stuff
-    #log(catalog.levels) 
-    #log(catalog.items) 
-    #log(catalog.classes) 
-    #log(catalog.creatures) 
+    #debug(catalog.levels) 
+    #debug(catalog.items) 
+    #debug(catalog.classes) 
+    #debug(catalog.creatures) 
+
+    max_logs_size = 1000000
 
     def __init__(self, storage_file_name, safely_shutdown_file_name, owner_id, default_prefix, logs_file_name=None): 
         self.owner_id = owner_id
@@ -60,12 +62,12 @@ class TTD_Bot(discord.Client, storage.Deconstructable):
 
         self.client = self
         
-        sys.stderr = sys.stdout = self.logs_file
+        file_io.add_file(self.logs_file, self.max_logs_size) 
 
         discord.Client.__init__(self, status=self.status, activity=self.current_activity) 
         storage.Deconstructable.__init__(self) 
 
-        print('here') 
+        debug('here') 
     
     def prefix(self, channel): 
         return self.default_prefix
@@ -147,7 +149,7 @@ class TTD_Bot(discord.Client, storage.Deconstructable):
         return decorator
 
     async def change_presence(self, **kwargs): 
-        #log(kwargs) 
+        #debug(kwargs) 
 
         self.status = status = kwargs.get('status', self.status) 
         self.current_activity = activity = kwargs.get('activity', self.current_activity) 
@@ -155,7 +157,7 @@ class TTD_Bot(discord.Client, storage.Deconstructable):
 
         await discord.Client.change_presence(self, status=status, activity=activity, afk=afk) 
 
-        log('successfully changed status to {}, activity to {}, and afk to {}'.format(self.status, self.current_activity, self.afk)) 
+        debug('successfully changed status to {}, activity to {}, and afk to {}'.format(self.status, self.current_activity, self.afk)) 
     
     async def load(self): 
         with self.tuning_out(): 
@@ -167,18 +169,18 @@ class TTD_Bot(discord.Client, storage.Deconstructable):
                 if channel is not None: 
                     self.game_data[channel_id] = reconstructed_game = self.reconstruct(game_info, self, channel)  
                     
-                    log('{} in {}'.format(reconstructed_game, reconstructed_game.channel.name)) 
+                    debug('{} in {}'.format(reconstructed_game, reconstructed_game.channel.name)) 
                 else: 
                     del self.game_data[channel_id] 
 
-                    log(f'channel with id {channel_id} is no longer accessible, game with data \
+                    debug(f'channel with id {channel_id} is no longer accessible, game with data \
 {game_info} was deleted') 
             
             await self.do_on_turn_on() 
 
             await self.save() 
 
-            log('successfully loaded') 
+            debug('successfully loaded') 
             
             self.needs_reloading = False
     
@@ -197,33 +199,33 @@ class TTD_Bot(discord.Client, storage.Deconstructable):
 
             text_dump(self.safely_shutdown_file, safely_shutdown) 
 
-            log('successfully saved') 
+            debug('successfully saved') 
 
             self.needs_saving = False
 
     async def edit_tasks(self, amount):
         self.tasks += amount
 
-        log('now running {} tasks'.format(self.tasks))
+        debug('now running {} tasks'.format(self.tasks))
 
         if self.tasks == 0: 
-            log('all tasks done') 
+            debug('all tasks done') 
 
             if self.needs_reloading: 
-                log('reloading') 
+                debug('reloading') 
 
                 await self.load() 
             elif self.needs_saving: 
-                log('saving') 
+                debug('saving') 
 
                 await self.save() 
 
             if self.shutting_down: 
-                log('all tasks done, will now shut down') 
+                debug('all tasks done, will now shut down') 
 
                 await self.logout() 
             else: 
-                log('nothing to do here now') 
+                debug('nothing to do here now') 
 
                 await self.change_presence(status=discord.Status.online, activity=discord.Game('To the Depths')) 
     
@@ -265,7 +267,7 @@ class TTD_Bot(discord.Client, storage.Deconstructable):
             client = self
 
             def __init__(self, status=client.status, activity=client.current_activity, afk=client.afk): 
-                #log(kwargs) 
+                #debug(kwargs) 
 
                 self.old_status = self.client.status
                 self.old_activity = self.client.current_activity
@@ -277,12 +279,12 @@ class TTD_Bot(discord.Client, storage.Deconstructable):
             async def __aenter__(self): 
                 await self.client.change_presence(status=self.new_status, activity=self.new_activity, afk=self.new_afk) 
 
-                log('temporarily changed to new presence') 
+                debug('temporarily changed to new presence') 
             
             async def __aexit__(self, typ, value, traceback): 
                 await self.client.change_presence(status=self.old_status, activity=self.old_activity, afk=self.old_afk) 
 
-                log('switched back to old presence') 
+                debug('switched back to old presence') 
         
         return Pulse_Presence(**kwargs) 
     
@@ -293,12 +295,12 @@ class TTD_Bot(discord.Client, storage.Deconstructable):
             def __enter__(self): 
                 self.client.listening = False
 
-                log('tuned out') 
+                debug('tuned out') 
             
             def __exit__(self, typ, value, traceback): 
                 self.client.listening = True
 
-                log('tuned back in') 
+                debug('tuned back in') 
         
         return Tuning_Out() 
     
@@ -315,13 +317,15 @@ class TTD_Bot(discord.Client, storage.Deconstructable):
             async def __aenter__(self): 
                 await self.client.edit_tasks(1) 
 
-                log('handling: {}'.format(self.message.content)) 
+                debug('handling: {}'.format(self.message.content)) 
 
                 return self.report
             
             async def __aexit__(self, typ, value, traceback): 
                 try: 
                     if typ is not None: 
+                        debug('ERROR! ', exc_info=(typ, value, traceback)) 
+                        
                         owner_dm = self.client.get_user(self.client.owner_id) 
                         error_report = reports.Report(self.client, owner_dm) 
                         
@@ -334,7 +338,7 @@ highly trained {}s has been dispatched to deal with this situation. '.format(sel
                     
                     await self.report.send_self() 
                 finally: 
-                    log('finished handling: {}'.format(self.message.content)) 
+                    debug('finished handling: {}'.format(self.message.content)) 
 
                     await self.client.edit_tasks(-1) 
         
@@ -350,7 +354,7 @@ highly trained {}s has been dispatched to deal with this situation. '.format(sel
         should_continue = text_load(self.safely_shutdown_file, False) 
 
         if should_continue: 
-            log('doing on_turn_ons') 
+            debug('doing on_turn_ons') 
 
             for channel_id, game in self.game_data.items(): 
                 report = reports.Report(self, game.channel) 
@@ -366,7 +370,7 @@ highly trained {}s has been dispatched to deal with this situation. '.format(sel
 
         self.listening = True
 
-        log('IM READY AF')
+        debug('IM READY AF')
 
     async def logout(self):
         '''
@@ -378,18 +382,18 @@ highly trained {}s has been dispatched to deal with this situation. '.format(sel
 
         await self.do_on_shutdown() 
 
-        log('a') 
+        debug('a') 
 
         self.storage_file.close() 
 
-        log('b') 
+        debug('b') 
 
         self.safely_shutdown_file.close() 
 
-        log('c') 
+        debug('c') 
 
         if self.logs_file_name: 
-            log('d') 
+            debug('d') 
 
             self.logs_file.close() 
 
@@ -400,7 +404,7 @@ highly trained {}s has been dispatched to deal with this situation. '.format(sel
         try: 
             return await to_do
         except discord.errors.Forbidden: 
-            log('{} was forbidden'.format(to_do)) 
+            debug('{} was forbidden'.format(to_do)) 
 
     async def prompt_for_message(self, report, member_id, choices=None, custom_check=lambda to_check: True, timeout=None, default_choice=None): 
         channel = report.channel
@@ -425,10 +429,10 @@ highly trained {}s has been dispatched to deal with this situation. '.format(sel
         def check(to_check): 
             valid_choice = choices is None or any(((to_check.content.lower() == choice.lower()) for choice in choices)) 
             
-            #log(to_check.channel.id == channel.id) 
-            #log(to_check.author.id == member_id) 
-            #log(valid_choice) 
-            #log(custom_check(to_check)) 
+            #debug(to_check.channel.id == channel.id) 
+            #debug(to_check.author.id == member_id) 
+            #debug(valid_choice) 
+            #debug(custom_check(to_check)) 
             
             return to_check.channel.id == channel.id and to_check.author.id == member_id and valid_choice and custom_check(to_check) 
 
@@ -823,7 +827,7 @@ async def announce(self, report, author):
 
                 report.add('Announced') 
             else: 
-                log('{} has no messageable channels'.format(guild.name)) 
+                debug('{} has no messageable channels'.format(guild.name)) 
 
 @TTD_Bot.command('fight', 'Starts a battle with a random creature from your current level', special_note='This command takes your move', groups=('battle', 'movement')) 
 @commands.requires_game
@@ -894,7 +898,7 @@ async def attempt_flee(self, report, player):
 async def crash(self, report, author): 
     report.add('crashing! ') 
 
-    log('crashing! ') 
+    debug('crashing! ') 
 
     raise ZeroDivisionError('test') 
 
@@ -969,7 +973,7 @@ async def whitelist_donate(self, report, player, target, *to_donate):
             
             donation = [(item, amount) for item, amount in donation_dict.items()] 
             
-            #log(donation) 
+            #debug(donation) 
 
             await player.whitelist_donate(report, donate_to, donation) 
     else: 

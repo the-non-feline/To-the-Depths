@@ -1,17 +1,23 @@
 import sys
 import time
 import os
+import logging
 
-def clear_file(file):
+logger = logging.getLogger(__name__) 
+
+logger.setLevel(logging.DEBUG) 
+
+def clear_file(file, should_log=True):
     file.seek(0)
     file.truncate(0)
 
-    log('cleared') 
+    if should_log: 
+        debug('cleared') 
 
 def text_dump(file, thing): 
     thing = str(thing) 
     
-    log('thing = {}'.format(thing)) 
+    debug('thing = {}'.format(thing)) 
 
     clear_file(file) 
     
@@ -20,29 +26,55 @@ def text_dump(file, thing):
     file.flush()
     os.fsync(file.fileno()) 
 
-    log('successfully dumped') 
+    debug('successfully dumped') 
 
 def text_load(file, default): 
     file.seek(0) 
     
     contents = file.read() 
     
-    log(contents) 
+    debug(contents) 
     
     if len(contents) > 0: 
         result = eval(contents) 
         
-        log(result) 
+        debug(result) 
         
         return result
     else: 
-        log('empty') 
+        debug('empty') 
 
         return default
 
-MAX_SIZE = 500000
+class Max_Size_Handler(logging.StreamHandler): 
+    def __init__(self, stream, max_size): 
+        super().__init__(stream) 
 
-def log(*values, sep=' ', end='\n', file=None): 
+        self.max_size = max_size
+    
+    def emit(self, record): 
+        super().emit(record) 
+
+        file = self.stream
+
+        if file.seekable() and file.readable() and file.tell() > self.max_size: 
+            file.seek(-self.max_size, 2) 
+
+            contents = file.read() 
+            
+            clear_file(file, should_log=False) 
+            file.write(trimmed_contents) 
+
+            file.flush() 
+
+def add_file(file, size_limit): 
+    logger.addHandler(Max_Size_Handler(file, size_limit)) 
+
+debug = logger.debug
+error = logger.error
+
+'''
+def debug(*values, sep=' ', end='\n', file=None): 
     file = file or sys.stdout
     #make this function restrict file size
 
@@ -53,7 +85,7 @@ def log(*values, sep=' ', end='\n', file=None):
         print('{}{} - '.format('\n', time.asctime()), end='', file=file, flush=True) 
         print(*values, sep=sep, end=end, file=file, flush=True) 
     except UnicodeEncodeError: 
-        log("couldn't print that for some reason", file=file) 
+        debug("couldn't print that for some reason", file=file) 
 
     if file.seekable() and file.readable() and file.tell() > MAX_SIZE: 
         file.seek(0) 
@@ -66,6 +98,5 @@ def log(*values, sep=' ', end='\n', file=None):
 
         file.seek(0, 2) 
 
-        log(len(trimmed_contents), file=file) 
-
         file.flush() 
+''' 
