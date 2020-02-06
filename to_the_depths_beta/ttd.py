@@ -39,7 +39,7 @@ class TTD_Bot(discord.Client, storage.Deconstructable):
     #debug(catalog.classes) 
     #debug(catalog.creatures) 
 
-    max_logs_size = 200000
+    max_logs_size = 5000000
 
     def __init__(self, storage_file_name, safely_shutdown_file_name, owner_id, default_prefix, logs_file_name=None): 
         self.owner_id = owner_id

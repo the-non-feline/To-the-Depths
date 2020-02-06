@@ -71,7 +71,7 @@ class Max_Size_Handler(logging.StreamHandler):
 
                 #trimmed_contents = contents[len(contents) - self.max_size - 1:] 
 
-                print(len(contents)) 
+                #print(len(contents)) 
                 #print(len(trimmed_contents)) 
                 
                 clear_file(file, should_log=False) 
