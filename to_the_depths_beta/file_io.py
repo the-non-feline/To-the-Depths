@@ -57,20 +57,27 @@ class Max_Size_Handler(logging.StreamHandler):
 
         file = self.stream
 
-        if file.seekable() and file.readable() and file.tell() > self.max_size: 
-            file.seek(0) 
+        if file.seekable() and file.readable(): 
+            file.seek(0, 2) 
 
-            contents = file.read() 
+            size = file.tell() 
 
-            trimmed_contents = contents[len(contents) - self.max_size - 1:] 
+            if size > self.max_size: 
+                extra_bytes = size - self.max_size
 
-            print(len(contents)) 
-            print(len(trimmed_contents)) 
-            
-            clear_file(file, should_log=False) 
-            file.write(trimmed_contents) 
+                file.seek(extra_bytes) 
 
-            file.flush() 
+                contents = file.read() 
+
+                #trimmed_contents = contents[len(contents) - self.max_size - 1:] 
+
+                print(len(contents)) 
+                #print(len(trimmed_contents)) 
+                
+                clear_file(file, should_log=False) 
+                file.write(contents) 
+
+                file.flush() 
 
 def add_file(file, size_limit): 
     logger.addHandler(Max_Size_Handler(file, size_limit)) 
