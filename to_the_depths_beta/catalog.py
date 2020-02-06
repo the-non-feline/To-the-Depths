@@ -3015,20 +3015,8 @@ early? ')
 class Forager(Player):
     name = 'Forager'
     description = "Nothing escapes dis boi's eye" 
-    specials = ('Guaranteed flee on battle turn in the Surface',) 
-    starting_multipliers = {All: 2,} 
-
-    @action
-    async def attempt_flee(self, report): 
-        if self.current_level is Levels.Surface: 
-            async with self.enemy.acting(report): 
-                report.add('{} successfully fled! '.format(self.name)) 
-                        
-                await self.end_battle_turn(report) 
-                await self.leave_battle(report) 
-        else: 
-            await Player.attempt_flee(self, report) 
-        # end battle stuff
+    starting_attack = 30
+    starting_multipliers = {All: 2, Meat: 0.5, Watt: 0.5,} 
 
 class Berserker(Player): 
     scaling_factor = 1
@@ -3124,6 +3112,7 @@ class Hunter(Player):
     starting_hp_multiplier = 1.2
     starting_attack = 40
     starting_attack_multiplier = 1.25
+    starting_multipliers = {Meat: 1.5,} 
 
 class Diver(Player):
     allowed_level_deviation = 1
@@ -3558,7 +3547,7 @@ class Saltwater_Croc(Entity):
     description = "What's for lunch - jlscientist"
     starting_hp = 100
     starting_shield = 100
-    starting_attack = 100
+    starting_attack = 70
     starting_access_levels = (Levels.Surface,) 
 
 class C_Saltwater_Croc(Saltwater_Croc, Creature): 
