@@ -70,8 +70,8 @@ class Max_Size_Handler(logging.StreamHandler):
 def add_file(file, size_limit): 
     logger.addHandler(Max_Size_Handler(file, size_limit)) 
 
-debug = logger.debug
-error = logger.error
+def debug(msg, *args, **kwargs): 
+    return logger.debug(msg + '\n\n', *args, **kwargs) 
 
 '''
 def debug(*values, sep=' ', end='\n', file=None): 
