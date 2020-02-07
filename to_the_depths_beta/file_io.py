@@ -83,7 +83,7 @@ def add_file(file, size_limit):
     logger.addHandler(Max_Size_Handler(file, size_limit)) 
 
 def debug(msg, *args, **kwargs): 
-    return logger.debug(str(msg) + '\n\n', *args, **kwargs) 
+    return logger.debug(str(msg) + '\n', *args, **kwargs) 
 
 '''
 def debug(*values, sep=' ', end='\n', file=None): 
