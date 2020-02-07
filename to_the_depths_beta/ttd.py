@@ -425,7 +425,7 @@ highly trained {}s has been dispatched to deal with this situation. '.format(sel
 
             extension += 'one of the following: {}. '.format(options) 
         else: 
-            extension += 'anything. ' 
+            extension += 'anything (according to instructions above). ' 
 
         if timeout is not None:
             if default_choice is not None: 
@@ -482,7 +482,7 @@ highly trained {}s has been dispatched to deal with this situation. '.format(sel
 
             extension += 'one of the following: {}. '.format(options) 
         else: 
-            extension += 'anything. ' 
+            extension += 'anything (according to instructions above). ' 
         
         if timeout is not None:
             if default_emoji is not None: 
