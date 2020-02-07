@@ -2022,6 +2022,7 @@ class Player(Commander, metaclass=Player_Meta, append=False):
         self.o_game_turn = False
         self.uo_game_turn = False
         self.can_move = False
+        self.decided_first = False
 
         Commander.__init__(self, client, channel, current_level=Levels.Surface) 
     
