@@ -2260,16 +2260,21 @@ class Player(Commander, metaclass=Player_Meta, append=False):
 
         return called_side.lower() == actual_side
     
-    async def display_items(self, report): 
+    @staticmethod
+    def items_display(items_inv): 
         def generator(inv): 
             if len(inv) > 0: 
                 for item, amount in inv: 
-                    yield '{} x {}'.format(item.name, amount) 
+                    if amount > 0: 
+                        yield '{} x {}'.format(item.name, amount) 
             else: 
                 yield 'Nothing' 
         
-        report.add("{}'s current items: ```{}```".format(self.name, make_list(generator(self.items)))) 
-        report.add('Items that will be received after death: ```{}```'.format(make_list(generator(self.saved_items)))) 
+        return f'```{make_list(generator(items_inv))}```' 
+    
+    async def display_items(self, report): 
+        report.add(f"{self.name}'s current items: {self.items_display(self.items)}") 
+        report.add(f'Items that will be received after death: {self.items_display(self.saved_items)}') 
     
     @action
     async def take_oxygen_damage(self, report):
@@ -4051,29 +4056,30 @@ class Vortex_Fish(Entity):
 
         num_steals = min(self.steal_amount, total_amount) 
 
-        if num_steals > 0: 
-            stealables = {item.__class__: amount for item, amount in target.items if amount > 0} 
-            stolen = {} 
-
+        if num_steals > 3: 
             for i in range(num_steals): 
-                choices = [item.name for item, amount in stealables.items() if amount > 0] 
+                report.add(target.items_display(target.items)) 
+                
+                report.add('{}, choose an item from the list above to lose. '.format(target.name, i + 1)) 
+                
+                choices = [item.name for item, amount in target.items if amount > 0] 
+                
+                def check(message): 
+                    item_name = message.content
+                    
+                    result = ttd_tools.search(items, item_name)
+                    
+                    return result and target.has_item(result) 
 
-                report.add('{}, choose item {} to lose. '.format(target.name, i + 1)) 
-
-                to_lose = await self.client.prompt_for_message(report, target.member_id, choices=choices, timeout=20, default_choice=choices[0]) 
+                to_lose = await self.client.prompt_for_message(report, target.member_id, custom_check=check, timeout=120, default_choice=choices[0]) 
 
                 item_to_lose = ttd_tools.search(items, to_lose) 
 
-                stealables[item_to_lose] -= 1
-
-                if item_to_lose in stolen: 
-                    stolen[item_to_lose] += 1
-                else: 
-                    stolen[item_to_lose] = 1
+                await target.lose_items(report, ((item_to_lose, 1),)) 
+        elif num_steals > 0: 
+            report.add(f"{self.name} takes all of {target.name}'s remaining items! ") 
             
-            final_loss = [(item, amount) for item, amount in stolen.items()] 
-
-            await target.lose_items(report, final_loss) 
+            await target.lose_items(report, target.items) 
         else: 
             report.add("But {} didn't have anything for {} to steal... ".format(target.name, self.name)) 
     
