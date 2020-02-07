@@ -2692,24 +2692,24 @@ thumbs_down_emoji), timeout=10, default_emoji=thumbs_down_emoji)
             if type(item) is type(Item): 
                 item_class = item
             else:
-                item_class = item.__class__
-
-            final_amount = amount
+                item_class = item.__class__ 
+            
+            multiplier = 1
 
             if All in self.multipliers:
                 all_multiplier = self.multipliers[All]
 
-                final_amount *= all_multiplier
-
-                report.add('{} receives a x{} multiplier on all items! '.format(self.name, all_multiplier))
+                multiplier *= all_multiplier
+            
             if item_class in self.multipliers:
                 item_multiplier = self.multipliers[item_class]
 
-                final_amount *= item_multiplier
-
-                report.add('{} receives a x{} multiplier on {}s! '.format(self.name, item_multiplier, item.name)) 
+                multiplier *= item_multiplier 
             
-            final_amount = math.ceil(final_amount) 
+            if multiplier != 1: 
+                report.add(f'{self.name} receives x{multiplier} {item_class.name}! ') 
+
+            final_amount = math.ceil(amount * multiplier) 
 
             to_receive.append([item_class, final_amount])
 
