@@ -405,8 +405,16 @@ highly trained {}s has been dispatched to deal with this situation. '.format(sel
             return await to_do
         except discord.errors.Forbidden: 
             debug('{} was forbidden'.format(to_do)) 
+    
+    @staticmethod
+    async def warn_time(report, mention, total_time, warn_time): 
+        await asyncio.sleep(total_time - warn_time) 
 
-    async def prompt_for_message(self, report, member_id, choices=None, custom_check=lambda to_check: True, timeout=None, default_choice=None): 
+        report.add(f'{mention}, **{warn_time} second warning!** ') 
+
+        await report.send_self() 
+
+    async def prompt_for_message(self, report, member_id, choices=None, custom_check=lambda to_check: True, timeout=None, timeout_warning=10, default_choice=None): 
         channel = report.channel
         mention = '<@{}>'.format(member_id) 
 
@@ -442,6 +450,11 @@ highly trained {}s has been dispatched to deal with this situation. '.format(sel
 
         await report.send_self() 
 
+        warn_task = None
+
+        if timeout and timeout > timeout_warning: 
+            warn_task = self.loop.create_task(self.warn_time(report, mention, timeout, timeout_warning))
+
         try:
             message = await self.wait_for('message', check=check, timeout=timeout) 
         except asyncio.TimeoutError: 
@@ -450,10 +463,13 @@ highly trained {}s has been dispatched to deal with this situation. '.format(sel
             to_return = default_choice
         else: 
             to_return = message.content
+
+            if warn_task: 
+                warn_task.cancel() 
         
         return to_return
 
-    async def prompt_for_reaction(self, report, member_id, emojis=None, custom_check=lambda reaction, member: True, timeout=None, default_emoji=None): 
+    async def prompt_for_reaction(self, report, member_id, emojis=None, custom_check=lambda reaction, member: True, timeout=None, timeout_warning=10, default_emoji=None): 
         channel = report.channel
         mention = '<@{}>'.format(member_id) 
 
@@ -488,7 +504,12 @@ highly trained {}s has been dispatched to deal with this situation. '.format(sel
             # noinspection PyShadowingNames,PyShadowingNames
             def check(reaction, member):
                 return reaction.message.id == last_message.id and member.id == member_id and (emojis is None or reaction.emoji in emojis) and custom_check(reaction, member) 
-    
+
+            warn_task = None
+
+            if timeout and timeout > timeout_warning: 
+                warn_task = self.loop.create_task(self.warn_time(report, mention, timeout, timeout_warning)) 
+            
             try:
                 reaction, member = await self.wait_for('reaction_add', check=check, timeout=timeout) 
             except asyncio.TimeoutError: 
@@ -497,6 +518,9 @@ highly trained {}s has been dispatched to deal with this situation. '.format(sel
                 to_return = default_emoji
             else: 
                 to_return = reaction.emoji
+
+                if warn_task: 
+                    warn_task.cancel() 
         else: 
             report.add(f'{mention}, something went wrong, going with default. ') 
             
