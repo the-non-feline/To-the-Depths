@@ -1760,40 +1760,7 @@ attacking {self.name}')
             report.add(f'{self.name} attacks! ') 
             
             if defender.is_a(Player):
-                # if defender is a Player, has a living pet, and the entity does not ignore the pet
-                if 'pet' not in self.penetrates and defender.pet is not None and not defender.pet.dead:
-                    # reaction_member = self.channel.guild.get_member(defender.member_id)
-                    report.add('{0}, will your pet take the hit? React with {1} for yes and {1} for no. This defaults to {2} if you do not respond after 20 seconds. '.format(defender.name, thumbs_up_emoji, thumbs_down_emoji))
-
-                    reaction_emoji = await self.client.prompt_for_reaction(report, defender.member_id, emojis=(thumbs_up_emoji, thumbs_down_emoji), timeout=20, default_emoji=thumbs_down_emoji)
-
-                    '''
-                    target_prompt.add_reaction(thumbs_up_emoji) 
-                    target_prompt.add_reaction(thumbs_down_emoji) 
-            
-                    def check(reaction, member): 
-                        return reaction.message is target_prompt and reaction.emoji in (thumbs_up_emoji, thumbs_down_emoji) and member is reaction_member
-                    
-                    try: 
-                        reaction, member = await self.client.wait_for('reaction_add', check=check, timeout=20) 
-                        reaction_emoji = reaction.emoji
-                    except asyncio.TimeoutError: 
-                        reaction_emoji = thumbs_down_emoji
-                    '''
-
-                    # if for some reason the pet still exists and is alive after this prompt
-                    if reaction_emoji == thumbs_up_emoji and defender.pet is not None and not defender.pet.dead:
-                        target = defender.pet
-                    elif 'sub' not in self.penetrates and defender.sub is not None and not defender.sub.dead and defender.sub.active:
-                        target = defender.sub
-                    else:
-                        target = defender
-
-                # if the player is still the target but they have a living sub and self does not ignore subs
-                elif 'sub' not in self.penetrates and defender.sub is not None and not defender.sub.dead and defender.sub.active:
-                    target = defender.sub
-                else:
-                    target = defender
+                target = await defender.choose_victim(report) 
             else:
                 target = defender
 
@@ -1956,6 +1923,10 @@ class Commander(Entity):
             await opponent.on_global_event(report, 'battle_end') 
 
             report.add('{} and {} are no longer fighting each other. '.format(self.name, opponent.name)) 
+    
+    @action
+    async def switch_attack(self, report): 
+        pass
     
     @action
     async def on_global_event(self, report, event_name, *args, **kwargs): 
@@ -2142,6 +2113,11 @@ class Player(Commander, metaclass=Player_Meta, append=False):
                 missing_items.append((required_item_class, deficit))
 
         return missing_items
+    
+    def has_entity(self, property_name): 
+        entity = getattr(self, property_name) 
+
+        return entity is not None and not entity.dead
     
     @classmethod
     def gen_help_specials(cls, specials): 
@@ -2376,20 +2352,6 @@ class Player(Commander, metaclass=Player_Meta, append=False):
             await self.fight_creature(report, surprise_attack=True) 
         else: 
             report.add('{} is not surprise attacked. '.format(self.name)) 
-
-        '''
-        if self.pet is not None and self.pet.current_hp > 0: 
-          await self.pet.on_game_turn_start() 
-        if self.sub is not None and self.sub.current_hp > 0: 
-          await self.sub.on_game_turn_start() 
-        if self.blubber_base is not None and self.blubber_base.current_hp > 0: 
-          await self.blubber_base.on_game_turn_start() 
-    
-        #all their items do whatever the heck they need to do at turn start
-        for item, amount in self.items.items(): 
-          item.on_game_turn_start(self) 
-        
-        ''' 
     
     @action
     async def regain_move(self, report): 
@@ -2876,11 +2838,37 @@ thumbs_down_emoji), timeout=10, default_emoji=thumbs_down_emoji)
             report.add(f'There is nothing to donate. ') 
     
     @action
+    async def choose_victim(self, report, attacker): 
+        if 'pet' not in attacker.penetrates and self.has_entity('pet'):
+            # reaction_member = self.channel.guild.get_member(defender.member_id)
+            report.add(f'{self.name}, will your pet take the hit? ') 
+
+            reaction_emoji = await self.client.prompt_for_reaction(report, self.member_id, 
+            emojis=(thumbs_up_emoji, thumbs_down_emoji), timeout=20, default_emoji=thumbs_down_emoji) 
+
+            # if for some reason the pet still exists and is alive after this prompt
+            if reaction_emoji == thumbs_up_emoji:
+                target = self.pet
+            elif 'sub' not in attacker.penetrates and self.has_entity('sub') and self.sub.active:
+                target = self.sub
+            else:
+                target = self
+
+        # if the player is still the target but they have a living sub and self does not ignore subs
+        elif 'sub' not in attacker.penetrates and self.has_entity('sub') and self.sub.active:
+            target = self.sub
+        else:
+            target = self
+        
+        return target
+    
+    @action
     async def switch_attack(self, report): 
         #debug('{} is now attacking {}'.format(self.name, self.enemy.name)) 
 
         async with self.enemy.acting(report): 
             await self.attack(report, self.enemy) 
+            await self.pet.attack(report, self.enemy) 
 
             await self.end_battle_turn(report) 
     
@@ -3453,6 +3441,14 @@ class Creature(Commander, metaclass=Creature_Meta, append=False):
         await Commander.on_turn_on(self, report) 
     
     @classmethod
+    def pet_form(cls): 
+        var_list = list(cls.__name__) 
+
+        var_list[0] = 'P' 
+
+        return eval(''.join(var_list)) 
+    
+    @classmethod
     def gen_help_specials(cls, specials): 
         super(Creature, cls).gen_help_specials(specials) 
 
@@ -3495,6 +3491,11 @@ class Creature(Commander, metaclass=Creature_Meta, append=False):
         drops_list = [(item, amount) for item, amount in self.drops.items()] 
 
         await drop_to.earn_items(report, drops_list) 
+    
+    @action
+    async def become_pet(self, report, owner): 
+        pet_class = self.pet_form() 
+        pet_obj = pet_class(self.client, self.channel, owner, current_level=owner.current_level) 
     
     @action
     async def on_death(self, report): 
@@ -3542,6 +3543,12 @@ class Pet(Entity, metaclass=Pet_Meta, append=False):
 
         Entity.__init__(self, client, channel, current_level=current_level) 
     
+    @staticmethod
+    def modify_deconstructed(deconstructed):
+        del deconstructed['owner'] 
+
+        super().modify_deconstructed(deconstructed) 
+    
     async def apply_bonuses(self, report): 
         pass
     
@@ -3567,6 +3574,10 @@ class Trout(Entity):
 
 class C_Trout(Trout, Creature): 
     starting_drops = {Meat: 2,} 
+    stars = 1
+
+class P_Trout(Trout, Pet): 
+    pass
 
 class Ariel_Leviathan(Entity):
     name = "Ariel Leviathan"
@@ -3581,6 +3592,10 @@ class C_Ariel_Leviathan(Ariel_Leviathan, Creature):
         Meat: 6, 
     }
     passive = True
+    stars = 1
+
+class P_Ariel_Leviathan(Ariel_Leviathan, Pet): 
+    pass
 
 class Saltwater_Croc(Entity):
     name = "Saltwater Croc"
@@ -3596,6 +3611,10 @@ class C_Saltwater_Croc(Saltwater_Croc, Creature):
         Meat: 5, 
     }
     passive = True
+    stars = 1
+
+class P_Saltwater_Croc(Saltwater_Croc, Pet): 
+    pass
 
 class Tiger_Fish(Entity):
     rage_threshold = 50
@@ -3623,7 +3642,11 @@ class Tiger_Fish(Entity):
         self.current_attack = former_attack
 
 class C_Tiger_Fish(Tiger_Fish, Creature): 
-    starting_drops = {Meat: 5,}
+    starting_drops = {Meat: 5,} 
+    stars = 1
+
+class P_Tiger_Fish(Tiger_Fish, Pet): 
+    pass
 
 class Gar(Entity):
     name = "Gar"
@@ -3634,6 +3657,10 @@ class Gar(Entity):
 
 class C_Gar(Gar, Creature): 
     starting_drops = {Meat: 4,} 
+    stars = 1
+
+class P_Gar(Gar, Pet): 
+    pass
 
 class Turtle(Entity):
     name = 'Turtle'
@@ -3647,7 +3674,11 @@ class C_Turtle(Turtle, Creature):
     starting_drops = {
         Suit: 1, 
         Meat: 1, 
-    }
+    } 
+    stars = 1
+
+class P_Turtle(Turtle, Pet): 
+    pass
 
 class Piranha(Entity): 
     name = 'Piranha'
@@ -3665,6 +3696,7 @@ class C_Piranha(Piranha, Creature):
     specials = Piranha.specials + ('Attack increases by {} every battle round'.format(per_round_attack_increase), 
 f'Drops increases by {drops_scaling_str} every battle round')  
     starting_drops = {Meat: 1,} 
+    stars = 1
     
     def __init__(self, client, channel, enemy, current_level=None):
         self.elapsed_battle_rounds = 0
@@ -3718,6 +3750,8 @@ self.drops_scaling.items()}
 
         await Creature.on_battle_round_start(self, report) 
 
+class P_Piranha(Piranha, Pet): 
+    pass
 
 class Hatchet_Fish(Entity):
     name = 'Hatchet Fish'
@@ -3728,6 +3762,10 @@ class Hatchet_Fish(Entity):
 
 class C_Hatchet_Fish(Hatchet_Fish, Creature): 
     starting_drops = {Hatchet_Fish_Corpse: 1,} 
+    stars = 1
+
+class P_Hatchet_Fish(Hatchet_Fish, Pet): 
+    pass
 
 class Octofish(Entity):
     name = 'Octofish'
@@ -3738,6 +3776,10 @@ class Octofish(Entity):
 
 class C_Octofish(Octofish, Creature): 
     starting_drops = {Meat: 3,} 
+    stars = 1
+
+class P_Octofish(Octofish, Pet): 
+    pass
 
 class Big_Trout(Entity): 
     name = 'Big Trout'
@@ -3748,6 +3790,10 @@ class Big_Trout(Entity):
 
 class C_Big_Trout(Big_Trout, Creature): 
     starting_drops = {Meat: 4,} 
+    stars = 1
+
+class P_Big_Trout(Big_Trout, Creature): 
+    pass
 
 class Water_Bug(Entity): 
     starting_miss = 0
@@ -3760,6 +3806,9 @@ class Water_Bug(Entity):
     starting_access_levels = (Levels.Surface,) 
 
 class C_Water_Bug(Water_Bug, Creature): 
+    stars = 1
+
+class P_Water_Bug(Water_Bug, Pet): 
     pass
 
 class Tummy_Tetra(Entity): 
@@ -3827,6 +3876,9 @@ class Tummy_Tetra(Entity):
             await self.attempt_steal(report, target) 
 
 class C_Tummy_Tetra(Tummy_Tetra, Creature): 
+    stars = 1
+
+class P_Tummy_Tetra(Tummy_Tetra, Pet): 
     pass
 
 class Toxic_Waste(Entity): 
