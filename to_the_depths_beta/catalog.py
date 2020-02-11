@@ -3541,6 +3541,22 @@ class Pet(Entity, metaclass=Pet_Meta, append=False):
         self.owner = owner
 
         Entity.__init__(self, client, channel, current_level=current_level) 
+    
+    async def apply_bonuses(self, report): 
+        pass
+    
+    async def remove_bonuses(self, report): 
+        pass
+    
+    async def on_use(self, report): 
+        pass
+    
+    async def can_use(self, report): 
+        return True
+    
+    async def attempt_use(self, report): 
+        if await self.can_use(report): 
+            await self.on_use(report) 
 
 class Trout(Entity):
     name = "Trout"
