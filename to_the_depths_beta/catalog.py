@@ -2332,6 +2332,8 @@ class Player(Commander, metaclass=Player_Meta, append=False):
     
     @action
     async def start_battle(self, report, enemy, surprise_attack=False): 
+        self.decided_first = False
+
         await self.use_move(report) 
 
         self.enemy = enemy
@@ -2343,6 +2345,14 @@ class Player(Commander, metaclass=Player_Meta, append=False):
             await self.on_global_event(report, 'battle_start') 
             await self.enemy.on_global_event(report, 'battle_start') 
 
+            if surprise_attack:
+                self.enemy.priority += 1
+
+                report.add("{}'s priority is raised by 1 due to having the element of surprise! ".format(self.enemy.name)) 
+
+            report.add(f'{self.mention}, use the `fight` command to continue the fight. ')
+
+            '''
             await self.on_global_event(report, 'battle_round_start') 
             await self.enemy.on_global_event(report, 'battle_round_start') 
 
@@ -2351,6 +2361,7 @@ class Player(Commander, metaclass=Player_Meta, append=False):
             # noinspection PyRedundantParentheses
             if proceed: 
                 await self.decide_first(report, surprise_attack) 
+            ''' 
     
     @action
     async def check_surprise_attack(self, report): 
@@ -2506,35 +2517,61 @@ class Player(Commander, metaclass=Player_Meta, append=False):
             await eval('item.on_{}(report, amount, *args, **kwargs) '.format(event_name)) 
         
         await eval('self.on_{}(report, *args, **kwargs) '.format(event_name)) 
+    
+    @action
+    async def battle_call(self, report, side): 
+        #debug('{} is now calling against {}'.format(self.name, self.enemy.name)) 
+
+        async with self.enemy.acting(report): 
+            await self.on_global_event(report, 'battle_round_start') 
+            await self.enemy.on_global_event(report, 'battle_round_start') 
+
+            if not self.dead and not self.enemy.dead: 
+                flip_side = Die.flip_coin() 
+
+                report.add('{} calls {}! '.format(self.name, side)) 
+                report.add("It's {}! ".format(flip_side)) 
+
+                if side.lower() == flip_side: 
+                    await self.on_global_event(report, 'win_coinflip') 
+                else: 
+                    await self.enemy.on_global_event(report, 'win_coinflip') 
 
     @action
-    async def decide_first(self, report, surprise_attack): 
-        if surprise_attack:
-            self.enemy.priority += 1
+    async def decide_first(self, report, coin_side): 
+        async with self.enemy.acting(report): 
+            await self.on_global_event(report, 'battle_round_start') 
+            await self.enemy.on_global_event(report, 'battle_round_start') 
 
-            report.add("{}'s priority is raised by 1 due to having the element of surprise! ".format(self.enemy.name)) 
+            if not self.dead and not self.enemy.dead: 
+                if self.priority == self.enemy.priority: 
+                    actual_side = Die.flip_coin() 
 
-        if self.priority == self.enemy.priority:
-            won_flip = await self.call_and_flip(report)
+                    won_flip = coin_side.lower() == actual_side
 
-            if won_flip:
-                more_first = self
-            else:
-                more_first = self.enemy
-                
-            report.add('{} got first hit due to winning the coin flip! '.format(more_first.name)) 
-        else:
-            more_first = max(self, self.enemy, key=lambda side: side.priority) 
-            
-            report.add('{} got first hit due to having the higher priority! '.format(more_first.name)) 
+                    if won_flip:
+                        more_first = self
+                    else:
+                        more_first = self.enemy
+                    
+                    report.add(f'{self.name} calls {coin_side}! ') 
+                    report.add(f"It's {actual_side}! ") 
+                        
+                    report.add('{} got first hit due to winning the coin flip! '.format(more_first.name)) 
+                else:
+                    more_first = max(self, self.enemy, key=lambda side: side.priority) 
+                    
+                    report.add('{} got first hit due to having the higher priority! '.format(more_first.name)) 
 
-        if more_first.is_a(Creature) and more_first.passive: 
-            report.add('{} is passive and flees! '.format(more_first.name)) 
+                if more_first.is_a(Creature) and more_first.passive: 
+                    report.add('{} is passive and flees! '.format(more_first.name)) 
 
-            await more_first.leave_battle(report) 
-        else: 
-            await more_first.on_global_event(report, 'first_hit')
-            await more_first.on_global_event(report, 'win_coinflip') 
+                    await more_first.leave_battle(report) 
+                else: 
+                    await more_first.on_global_event(report, 'first_hit')
+                    await more_first.on_global_event(report, 'win_coinflip') 
+
+                    self.decided_first = True
 
     @action
     async def calculate_hp_bleed(self, report, inflicter, penetrates, bleeds):
@@ -2998,25 +3035,6 @@ early? ')
     @action
     async def pick_fight(self, report): 
         await self.fight_creature(report) 
-    
-    @action
-    async def battle_call(self, report, side): 
-        #debug('{} is now calling against {}'.format(self.name, self.enemy.name)) 
-
-        async with self.enemy.acting(report): 
-            await self.on_global_event(report, 'battle_round_start') 
-            await self.enemy.on_global_event(report, 'battle_round_start') 
-
-            if not self.dead and not self.enemy.dead: 
-                flip_side = Die.flip_coin() 
-
-                report.add('{} calls {}! '.format(self.name, side)) 
-                report.add("It's {}! ".format(flip_side)) 
-
-                if side.lower() == flip_side: 
-                    await self.on_global_event(report, 'win_coinflip') 
-                else: 
-                    await self.enemy.on_global_event(report, 'win_coinflip') 
 
 class Forager(Player):
     name = 'Forager'
@@ -4055,10 +4073,8 @@ class Vortex_Fish(Entity):
         available_amounts = (amount for item, amount in target.items if amount > 0) 
         total_amount = sum(available_amounts) 
 
-        num_steals = min(self.steal_amount, total_amount) 
-
-        if num_steals > 3: 
-            for i in range(num_steals): 
+        if total_amount > 3: 
+            for i in range(self.steal_amount): 
                 report.add(target.items_display(target.items)) 
                 
                 report.add('{}, choose an item from the list above to lose. '.format(target.name, i + 1)) 
@@ -4077,7 +4093,7 @@ class Vortex_Fish(Entity):
                 item_to_lose = ttd_tools.search(items, to_lose) 
 
                 await target.lose_items(report, ((item_to_lose, 1),)) 
-        elif num_steals > 0: 
+        elif total_amount > 0: 
             report.add(f"{self.name} takes all of {target.name}'s remaining items! ") 
             
             await target.lose_items(report, target.items) 

@@ -192,8 +192,19 @@ def action(func):
     
     return action_func
 
-def requires_uo_game_turn(func): 
+def blockable_action(func): 
     @action
+    async def blockable_func(self, report, player, *args): 
+        if player.enemy and not player.decided_first: 
+            report.add(f'{player.name}, you must start the first round of your current fight before you can \
+do anything. Use the `fight` command to do so. ') 
+        else: 
+            return await func(self, report, player, *args) 
+    
+    return blockable_func
+
+def requires_uo_game_turn(func): 
+    @blockable_action
     async def frequiring_func(self, report, player, *args): 
         if player.game.current_turn_index < 0: 
             report.add('{}, the game has not started yet. '.format(player.name)) 

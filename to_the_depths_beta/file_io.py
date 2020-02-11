@@ -46,6 +46,7 @@ def text_load(file, default):
 
         return default
 
+'''
 class Max_Size_Handler(logging.StreamHandler): 
     def __init__(self, stream, max_size): 
         super().__init__(stream) 
@@ -76,14 +77,43 @@ class Max_Size_Handler(logging.StreamHandler):
                 
                 clear_file(file, should_log=False) 
                 file.write(contents) 
+                
+                clear_file(file, should_log=False) 
 
                 file.flush() 
+''' 
 
-def add_file(file, size_limit): 
-    logger.addHandler(Max_Size_Handler(file, size_limit)) 
+def add_file(file): 
+    logger.addHandler(logging.StreamHandler(file)) 
 
 def debug(msg, *args, **kwargs): 
     return logger.debug(str(msg) + '\n', *args, **kwargs) 
+
+def trim_file(file, max_size): 
+    if file.seekable() and file.readable(): 
+        file.seek(0, 2) 
+
+        size = file.tell() 
+
+        if size > max_size: 
+            extra_bytes = size - max_size
+
+            file.seek(extra_bytes) 
+
+            contents = file.read() 
+
+            #trimmed_contents = contents[len(contents) - self.max_size - 1:] 
+
+            #print(len(contents)) 
+            #print(len(trimmed_contents)) 
+            
+            clear_file(file, should_log=False) 
+
+            file.seek(0) 
+            
+            file.write(contents) 
+
+            file.flush() 
 
 '''
 def debug(*values, sep=' ', end='\n', file=None): 

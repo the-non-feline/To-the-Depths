@@ -62,7 +62,7 @@ class TTD_Bot(discord.Client, storage.Deconstructable):
 
         self.client = self
         
-        file_io.add_file(self.logs_file, self.max_logs_size) 
+        file_io.add_file(self.logs_file) 
 
         discord.Client.__init__(self, status=self.status, activity=self.current_activity) 
         storage.Deconstructable.__init__(self) 
@@ -210,6 +210,8 @@ class TTD_Bot(discord.Client, storage.Deconstructable):
 
         if self.tasks == 0: 
             debug('all tasks done') 
+
+            trim_file(self.logs_file, self.max_logs_size) 
 
             if self.needs_reloading: 
                 debug('reloading') 
@@ -654,7 +656,7 @@ async def display_game(self, report, game, author):
 @TTD_Bot.command('suicide', 'Commits suicide', groups=('player',)) 
 @commands.requires_game
 @commands.requires_player
-@commands.action
+@commands.blockable_action
 async def suicide(self, report, player): 
     await player.suicide(report) 
 
@@ -853,7 +855,7 @@ async def announce(self, report, author):
             else: 
                 debug('{} has no messageable channels'.format(guild.name)) 
 
-@TTD_Bot.command('fight', 'Starts a battle with a random creature from your current level', special_note='This command takes your move', groups=('battle', 'movement')) 
+@TTD_Bot.command('startfight', 'Starts a battle with a random creature from your current level', special_note='This command takes your move', groups=('battle', 'movement')) 
 @commands.requires_game
 @commands.requires_player
 @commands.requires_can_move
@@ -863,19 +865,22 @@ async def start_battle(self, report, player):
 async def coinflip_args_check(self, report, author, side): 
     return await valid_side(self, report, author, 'side', side) 
 
-@TTD_Bot.command('call', 'Call a side in a coin flip to decide who gets the next battle turn', groups=('battle',), required_args=('side',), special_args_check=coinflip_args_check) 
+@TTD_Bot.command('fight', 'Continue the fight by calling a side in a coin flip to decide who gets the next battle turn', groups=('battle',), required_args=('side',), special_args_check=coinflip_args_check) 
 @commands.requires_game
 @commands.requires_player
 @commands.requires_neither_battle_turn
 @commands.action
 async def battle_call(self, report, player, side): 
-    await player.battle_call(report, side) 
+    if player.decided_first: 
+        await player.battle_call(report, side) 
+    else: 
+        await player.decide_first(report, side) 
 
 @TTD_Bot.command('attack', 'Attacks your opponent', special_note='This command takes your battle turn', groups=('battle',)) 
 @commands.requires_game
 @commands.requires_player
 @commands.requires_battle_turn
-@commands.action
+@commands.blockable_action
 async def attack(self, report, player): 
     await player.switch_attack(report) 
 
@@ -912,7 +917,7 @@ async def free_regen(self, report, player):
 @commands.requires_game
 @commands.requires_player
 @commands.requires_battle_turn
-@commands.action
+@commands.blockable_action
 async def attempt_flee(self, report, player): 
     await player.attempt_flee(report) 
 

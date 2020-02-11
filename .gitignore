@@ -1,0 +1,8 @@
+.testing/
+to_the_depths/__pycache__/
+to_the_depths_beta/__pycache__/
+logs.txt
+main.py
+main_test.py
+safely_shutdown.txt
+storage.txt
