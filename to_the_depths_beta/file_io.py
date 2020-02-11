@@ -90,7 +90,7 @@ def debug(msg, *args, **kwargs):
     return logger.debug(str(msg) + '\n', *args, **kwargs) 
 
 def trim_file(file, max_size): 
-    if file.seekable() and file.readable(): 
+    if not file.closed and file.seekable() and file.readable(): 
         file.seek(0, 2) 
 
         size = file.tell() 
@@ -110,7 +110,7 @@ def trim_file(file, max_size):
             clear_file(file, should_log=False) 
 
             file.seek(0) 
-            
+
             file.write(contents) 
 
             file.flush() 

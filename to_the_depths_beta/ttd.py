@@ -211,8 +211,6 @@ class TTD_Bot(discord.Client, storage.Deconstructable):
         if self.tasks == 0: 
             debug('all tasks done') 
 
-            trim_file(self.logs_file, self.max_logs_size) 
-
             if self.needs_reloading: 
                 debug('reloading') 
 
@@ -230,6 +228,8 @@ class TTD_Bot(discord.Client, storage.Deconstructable):
                 debug('nothing to do here now') 
 
                 await self.change_presence(status=discord.Status.online, activity=discord.Game('To the Depths')) 
+        
+        trim_file(self.logs_file, self.max_logs_size) 
     
     '''
     @acms.asynccontextmanager
