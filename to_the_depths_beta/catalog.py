@@ -758,13 +758,6 @@ class Hatchet_Fish_Corpse(Item):
     name = 'Hatchet Fish Corpse'
     description = 'Very hard skeleton' 
 
-
-class Fishing_Net(Item):
-    name = 'Fishing Net'
-    description = "Can catch basically anything if you're skilled enough"
-    obtainments = ('Fisherman starts out with one',) 
-    specials = ('Required to catch pets',) 
-
 class Wood(Item): 
     name = 'Wood' 
     description = f"Why is this in the {Levels.Middle.name}? **{name}**n't it float to the {Levels.Surface.name}? " 
@@ -848,6 +841,13 @@ class Watt(Item):
 class Pufferfish_Corpse(Item): 
     name = 'Pufferfish Corpse' 
     description = 'Puffy' 
+
+class Fishing_Net(Item):
+    name = 'Fishing Net'
+    description = "Can catch basically anything if you're skilled enough"
+    obtainments = ('Fisherman starts out with one',) 
+    specials = ('Required to catch pets',) 
+    recipe = (Wood, 4), (Iron, 3), (Coral, 12) 
 
 class Lamp(Item): 
     name = 'Lamp' 
@@ -1760,7 +1760,7 @@ attacking {self.name}')
             report.add(f'{self.name} attacks! ') 
             
             if defender.is_a(Player):
-                target = await defender.choose_victim(report) 
+                target = await defender.choose_victim(report, self) 
             else:
                 target = defender
 
@@ -2036,7 +2036,7 @@ class Player(Commander, metaclass=Player_Meta, append=False):
         if self.sub is not None:
             self.sub = self.reconstruct(self.sub, self.client, self.channel, self)
         if self.pet is not None:
-            self.pet = self.reconstruct(self.sub, self.client, self.channel, self)
+            self.pet = self.reconstruct(self.pet, self.client, self.channel, self)
         if self.blubber_base is not None:
             self.blubber_base = self.reconstruct(self.blubber_base, self.client, self.channel, self) 
         
@@ -2868,7 +2868,39 @@ thumbs_down_emoji), timeout=10, default_emoji=thumbs_down_emoji)
 
         async with self.enemy.acting(report): 
             await self.attack(report, self.enemy) 
-            await self.pet.attack(report, self.enemy) 
+            
+            if self.pet: 
+                await self.pet.attack(report, self.enemy) 
+
+            await self.end_battle_turn(report) 
+    
+    @action
+    async def test_catch_success(self, report): 
+        if self.enemy.stars == 1: 
+            if self.enemy.current_hp <= self.enemy.catch_threshold: 
+                report.add(f'{self.name} attempts to catch {self.enemy.name}! ') 
+
+                won_flip = await self.call_and_flip(report) 
+
+                return won_flip
+            else: 
+                report.add(f"{self.name} can't catch {self.enemy.name} because {self.enemy.name} is still \
+above {self.enemy.catch_threshold} HP! ") 
+        else: 
+            report.add(f"{self.name} can't catch {self.enemy.name}! ") 
+    
+    @action
+    async def attempt_catch(self, report): 
+        success = await self.test_catch_success(report) 
+
+        if success: 
+            report.add(f'{self.name} successfully catches {self.enemy.name}! ') 
+
+            await self.end_battle_turn(report) 
+
+            await self.enemy.become_pet(report) 
+        else: 
+            report.add(f'{self.name} failed! ') 
 
             await self.end_battle_turn(report) 
     
@@ -3023,6 +3055,44 @@ early? ')
     @action
     async def pick_fight(self, report): 
         await self.fight_creature(report) 
+    
+    @action
+    async def lose_pet(self, report): 
+        pet = self.pet
+
+        self.pet = None
+
+        report.add(f'{self.name} loses their pet {pet.name}! ') 
+
+        await pet.remove_bonuses(report) 
+    
+    @action
+    async def gain_pet(self, report, pet_obj): 
+        if self.pet: 
+            await self.lose_pet(report) 
+        
+        self.pet = pet_obj
+
+        report.add(f'{self.name} now has a pet {self.pet.name}! ') 
+
+        await self.pet.apply_bonuses(report) 
+    
+    @action
+    async def regen_pet(self, report, amount): 
+        amount = int(amount) 
+
+        meat_obj, meat_amount = self.get_inv_entry(Meat) 
+
+        if meat_amount >= amount: 
+            pet_food = Meat(self.client, self.channel, self.pet) 
+
+            await pet_food.on_use(report, amount) 
+
+            await self.lose_items(report, ((Meat, amount),)) 
+
+            report.add(f'{self.name} successfully regenned their pet {self.pet.name}. ') 
+        else: 
+            report.add(f"{self.name}, you tried to use {amount} {Meat.name} but you only have {meat_amount}. ") 
 
 class Forager(Player):
     name = 'Forager'
@@ -3116,6 +3186,26 @@ class Fisherman(Player):
     starting_attack = 40
     starting_items = Player.starting_items + ([Fishing_Net, 1],)
 
+    @action
+    async def test_catch_success(self, report): 
+        if self.enemy.stars == 2: 
+            if self.enemy.current_hp <= self.enemy.catch_threshold: 
+                report.add(f'{self.name} attempts to catch {self.enemy.name}! ') 
+
+                won_flip = await self.call_and_flip(report) 
+
+                return won_flip
+            else: 
+                report.add(f"{self.name} can't catch {self.enemy.name} because {self.enemy.name} is still \
+above {self.enemy.catch_threshold} HP! ") 
+        elif self.enemy.stars == 1: 
+            if self.enemy.current_hp <= self.enemy.catch_threshold: 
+                return True
+            else: 
+                report.add(f"{self.name} can't catch {self.enemy.name} because {self.enemy.name} is still \
+above {self.enemy.catch_threshold} HP! ") 
+        else: 
+            report.add(f"{self.name} can't catch {self.enemy.name}! ") 
 
 class Hunter(Player):
     name = 'Hunter'
@@ -3405,6 +3495,7 @@ class Creature_Meta(ttd_tools.GO_Meta):
     append_to = creatures
 
 class Creature(Commander, metaclass=Creature_Meta, append=False): 
+    catch_threshold = 50
     starting_drops = {} 
     stars = 0
     passive = False
@@ -3447,6 +3538,9 @@ class Creature(Commander, metaclass=Creature_Meta, append=False):
         var_list[0] = 'P' 
 
         return eval(''.join(var_list)) 
+    
+    def pet_obj(self): 
+        return self.pet_form()(self.client, self.channel, self.enemy, current_level=self.current_level) 
     
     @classmethod
     def gen_help_specials(cls, specials): 
@@ -3493,9 +3587,14 @@ class Creature(Commander, metaclass=Creature_Meta, append=False):
         await drop_to.earn_items(report, drops_list) 
     
     @action
-    async def become_pet(self, report, owner): 
-        pet_class = self.pet_form() 
-        pet_obj = pet_class(self.client, self.channel, owner, current_level=owner.current_level) 
+    async def become_pet(self, report): 
+        pet_obj = self.pet_obj() 
+
+        enemy = self.enemy
+
+        await self.leave_battle(report) 
+
+        await enemy.gain_pet(report, pet_obj) 
     
     @action
     async def on_death(self, report): 
@@ -3547,7 +3646,7 @@ class Pet(Entity, metaclass=Pet_Meta, append=False):
     def modify_deconstructed(deconstructed):
         del deconstructed['owner'] 
 
-        super().modify_deconstructed(deconstructed) 
+        Entity.modify_deconstructed(deconstructed) 
     
     async def apply_bonuses(self, report): 
         pass
@@ -3564,6 +3663,15 @@ class Pet(Entity, metaclass=Pet_Meta, append=False):
     async def attempt_use(self, report): 
         if await self.can_use(report): 
             await self.on_use(report) 
+    
+    async def on_death(self, report): 
+        self.current_hp = 0
+
+        await self.hp_changed(None) 
+
+        report.add(f'{self.name} died! ') 
+
+        await self.owner.lose_pet(report) 
 
 class Trout(Entity):
     name = "Trout"
@@ -3681,20 +3789,21 @@ class P_Turtle(Turtle, Pet):
     pass
 
 class Piranha(Entity): 
+    per_round_attack_increase = 20
+
     name = 'Piranha'
     description = 'Om nom nom' 
+    specials = ('Attack increases by {} every battle round'.format(per_round_attack_increase),) 
     starting_hp = 70
     starting_attack = 10
     starting_access_levels = (Levels.Surface,) 
 
 class C_Piranha(Piranha, Creature): 
-    per_round_attack_increase = 20
     drops_scaling = {Meat: 2,} 
 
     drops_scaling_str = format_iterable(drops_scaling.items(), formatter='{0[1]} {0[0].name}(s)') 
 
-    specials = Piranha.specials + ('Attack increases by {} every battle round'.format(per_round_attack_increase), 
-f'Drops increases by {drops_scaling_str} every battle round')  
+    specials = Piranha.specials + (f'Drops increases by {drops_scaling_str} every battle round',)  
     starting_drops = {Meat: 1,} 
     stars = 1
     
@@ -3731,6 +3840,10 @@ self.drops_scaling.items()}
 
         self.drops = add_dicts(self.drops, increased_drops) 
     
+    def pet_obj(self):
+        return self.pet_form()(self.client, self.channel, self.enemy, current_level=self.current_level, 
+elapsed_battle_rounds=self.elapsed_battle_rounds)
+    
     @action
     async def on_battle_round_start(self, report):
         self.elapsed_battle_rounds += 1
@@ -3751,7 +3864,33 @@ self.drops_scaling.items()}
         await Creature.on_battle_round_start(self, report) 
 
 class P_Piranha(Piranha, Pet): 
-    pass
+    def __init__(self, client, channel, owner, current_level=None, elapsed_battle_rounds=0): 
+        Pet.__init__(self, client, channel, owner, current_level=current_level) 
+
+        self.elapsed_battle_rounds = elapsed_battle_rounds
+
+        attack_increase = elapsed_battle_rounds * self.per_round_attack_increase * self.attack_multiplier
+
+        self.base_attack += attack_increase
+        self.current_attack += attack_increase
+    
+    @action
+    async def on_shutdown(self, report): 
+        await Pet.on_shutdown(self, report) 
+
+        attack_decrease = self.elapsed_battle_rounds * self.per_round_attack_increase * self.attack_multiplier
+
+        self.base_attack -= attack_decrease
+        self.current_attack -= attack_decrease
+    
+    @action
+    async def on_turn_on(self, report): 
+        await Pet.on_turn_on(self, report) 
+
+        attack_increase = self.elapsed_battle_rounds * self.per_round_attack_increase * self.attack_multiplier
+
+        self.base_attack += attack_increase
+        self.current_attack += attack_increase
 
 class Hatchet_Fish(Entity):
     name = 'Hatchet Fish'
@@ -3765,7 +3904,8 @@ class C_Hatchet_Fish(Hatchet_Fish, Creature):
     stars = 1
 
 class P_Hatchet_Fish(Hatchet_Fish, Pet): 
-    pass
+    attack_bonus = 20
+    starting_attack = Hatchet_Fish.starting_attack + attack_bonus
 
 class Octofish(Entity):
     name = 'Octofish'
@@ -3792,7 +3932,7 @@ class C_Big_Trout(Big_Trout, Creature):
     starting_drops = {Meat: 4,} 
     stars = 1
 
-class P_Big_Trout(Big_Trout, Creature): 
+class P_Big_Trout(Big_Trout, Pet): 
     pass
 
 class Water_Bug(Entity): 
@@ -3887,7 +4027,7 @@ class Toxic_Waste(Entity):
     starting_hp = float('inf') 
     starting_attack = 30
     starting_access_levels = (Levels.Surface, Levels.Middle) 
-    starting_penetrates = ('shield',) 
+    starting_penetrates = ('shield', 'pet') 
 
 class C_Toxic_Waste(Toxic_Waste, Creature): 
     specials = Toxic_Waste.specials + ('Always gets first hit', 'Hits once and then disappears', f'Attacks can be converted to '

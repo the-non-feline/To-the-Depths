@@ -158,6 +158,15 @@ def requires_player(func):
     
     return erequiring_func
 
+def requires_pet(func): 
+    async def pet_requiring_func(self, report, player, *args): 
+        if player.pet: 
+            return await func(self, report, player, *args) 
+        else: 
+            report.add(f"{player.mention}, you don't have a pet. ") 
+    
+    return pet_requiring_func
+
 def modifying(func): 
     async def modifying_func(self, report, *args): 
         try: 

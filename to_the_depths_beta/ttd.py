@@ -1171,3 +1171,33 @@ async def send_logs(self, report, author, file_type):
         report.add('Sent') 
     else: 
         report.add(f"{author.mention}, this file isn't sendable. ") 
+
+async def regenpet_args_check(self, report, author, amount): 
+    return await valid_amount(self, report, author, 'amount', amount)
+
+@TTD_Bot.command('regenpet', f"Regens your pet's HP using {catalog.Meat.name}", required_args=('amount',), 
+special_args_check=regenpet_args_check) 
+@commands.requires_game
+@commands.requires_player
+@commands.requires_uo_game_turn
+@commands.requires_pet
+async def regen_pet(self, report, player, amount): 
+    await player.regen_pet(report, amount) 
+
+@TTD_Bot.command('viewpet', "View your pet's stats") 
+@commands.requires_game
+@commands.requires_player
+@commands.requires_pet
+async def view_pet(self, report, player): 
+    report.add(player.pet.stats_embed()) 
+
+@TTD_Bot.command('catch', 'Attempt to catch the creature as a pet') 
+@commands.requires_game
+@commands.requires_player
+@commands.requires_battle_turn
+@commands.blockable_action
+async def attempt_catch(self, report, player): 
+    if player.has_item(catalog.Fishing_Net): 
+        await player.attempt_catch(report) 
+    else: 
+        report.add(f"{player.name}, you need a {catalog.Fishing_Net.name} to catch creatures. ") 
