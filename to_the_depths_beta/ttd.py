@@ -252,13 +252,12 @@ class TTD_Bot(discord.Client, storage.Deconstructable):
 
                 if stripped.startswith('!'): 
                     stripped = stripped[1:] 
+            else: 
+                stripped = mention
                 
-                try: 
-                    member_id = int(stripped) 
-                except ValueError: 
-                    pass
-                else: 
-                    to_append = report.channel.guild.get_member(member_id) 
+            if stripped.isnumeric(): 
+                member_id = int(stripped) 
+                to_append = report.channel.guild.get_member(member_id) 
             
             mentioned.append(to_append) 
         
@@ -865,7 +864,9 @@ async def start_battle(self, report, player):
 async def coinflip_args_check(self, report, author, side): 
     return await valid_side(self, report, author, 'side', side) 
 
-@TTD_Bot.command('fight', 'Continue the fight by calling a side in a coin flip to decide who gets the next battle turn', groups=('battle',), required_args=('side',), special_args_check=coinflip_args_check) 
+@TTD_Bot.command('fight', 'Continue the fight by calling a side in a coin flip to decide who gets the next battle turn', 
+special_note=f'This command is for **continuing** a fight. Use `{start_battle.name}` to **start** a fight. ', 
+groups=('battle',), required_args=('side',), special_args_check=coinflip_args_check) 
 @commands.requires_game
 @commands.requires_player
 @commands.requires_neither_battle_turn
@@ -1064,9 +1065,8 @@ async def craft_args_check(self, report, author, item, amount):
         else: 
             return True
 
-@TTD_Bot.command('craft', 'Crafts the specified amount of the specified item', special_note='This command takes your move', groups=('items', 'movement'), required_args=('item', ' \
-                                                                                                                                         ''amount'), 
-                 special_args_check=craft_args_check) 
+@TTD_Bot.command('craft', 'Crafts the specified amount of the specified item', special_note='This command takes your move', groups=('items', 'movement'), 
+required_args=('item', 'amount'), special_args_check=craft_args_check) 
 @commands.requires_game
 @commands.requires_player
 @commands.requires_can_move
@@ -1182,7 +1182,16 @@ special_args_check=regenpet_args_check)
 @commands.requires_uo_game_turn
 @commands.requires_pet
 async def regen_pet(self, report, player, amount): 
-    await player.regen_pet(report, amount) 
+    await player.regen_pet_hp(report, amount) 
+
+@TTD_Bot.command('regenpetshield', f"Regens your pet's shield using {catalog.Meat.name}", required_args=('amount',), 
+special_args_check=regenpet_args_check) 
+@commands.requires_game
+@commands.requires_player
+@commands.requires_uo_game_turn
+@commands.requires_pet
+async def regen_pet_shield(self, report, player, amount): 
+    await player.regen_pet_shield(report, amount) 
 
 @TTD_Bot.command('viewpet', "View your pet's stats") 
 @commands.requires_game

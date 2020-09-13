@@ -61,8 +61,24 @@ def subtract_dicts(top, bottom):
 class Die:
     # this returns the emoji, followed by the name
     @staticmethod
-    def flip_coin(): 
-        return random.choice(('heads', 'tails')) 
+    def flip_coin(emojis=False): 
+        if emojis: 
+            choices = (h_emoji, t_emoji) 
+        else: 
+            choices = ('heads', 'tails') 
+        
+        return random.choice(choices) 
+    
+    @staticmethod
+    def convert_coin_result(to_convert): 
+        conversions = {
+            h_emoji: 'heads', 
+            t_emoji: 'tails', 
+            'heads': h_emoji, 
+            'tails': t_emoji, 
+        } 
+
+        return conversions[to_convert] 
 
     @staticmethod
     def roll_die():
@@ -1486,10 +1502,10 @@ attacking {cls.name}')
         return embed
     
     def gen_stats_specials(self, specials): 
-        if self.starting_hp_multiplier != 1: 
+        if self.hp_multiplier != 1: 
             specials.append(f'HP is always multiplied by {self.hp_multiplier}') 
         
-        if self.starting_attack_multiplier != 1: 
+        if self.attack_multiplier != 1: 
             specials.append(f'Attack damage is always multiplied by {self.attack_multiplier}') 
         
         if self.enemy_attack_multiplier != 1: 
@@ -1974,7 +1990,7 @@ class Player(Commander, metaclass=Player_Meta, append=False):
     starting_attack = 20
     starting_access_levels = (Levels.Surface,) 
     starting_oxygen = 5
-    starting_items = () 
+    starting_items = ()  
     starting_multipliers = {}
     starting_priority = 0
 
@@ -2124,10 +2140,11 @@ class Player(Commander, metaclass=Player_Meta, append=False):
         super(Player, cls).gen_help_specials(specials) 
 
         if len(cls.starting_multipliers) > 0: 
-            multipliers_gen = (f'x{multiplier} {item.name}' for item, multiplier in cls.starting_multipliers.items()) 
+            multipliers_gen = (f'x{multiplier} {item.name}' for item, multiplier in cls.starting_multipliers.items() if multiplier != 1) 
             multipliers_str = format_iterable(multipliers_gen) 
 
-            specials.append(f'Receives {multipliers_str} (except from crafting and donating) ') 
+            if multipliers_str: 
+                specials.append(f'Receives {multipliers_str} (except from crafting and donating) ') 
         
         if len(cls.starting_items) > 0: 
             items_gen = (f'{amount} {item.name}(s)' for item, amount in cls.starting_items) 
@@ -2148,10 +2165,11 @@ class Player(Commander, metaclass=Player_Meta, append=False):
         Commander.gen_stats_specials(self, specials) 
 
         if len(self.multipliers) > 0: 
-            multipliers_gen = (f'x{multiplier} {item.name}' for item, multiplier in self.multipliers.items()) 
+            multipliers_gen = (f'x{multiplier} {item.name}' for item, multiplier in self.multipliers.items() if multiplier != 1) 
             multipliers_str = format_iterable(multipliers_gen) 
 
-            specials.append(f'Receives {multipliers_str} (except from crafting and donating) ') 
+            if multipliers_str: 
+                specials.append(f'Receives {multipliers_str} (except from crafting and donating) ') 
 
     def stats_embed(self): 
         embed = Commander.stats_embed(self)
@@ -2160,6 +2178,8 @@ class Player(Commander, metaclass=Player_Meta, append=False):
 
         embed.add_field(name='Game Turn', value=self.uo_game_turn)
         embed.add_field(name='Can move', value=self.can_move) 
+
+        embed.add_field(name='Pet', value=self.pet.name if self.pet else None) 
 
         embed.add_field(name='User', value=self.mention, inline=False) 
 
@@ -2225,17 +2245,28 @@ class Player(Commander, metaclass=Player_Meta, append=False):
             report.add("{}'s move is now used up. ".format(self.name)) 
     
     @action
-    async def call_and_flip(self, report): 
+    async def call_and_flip(self, report, allow_cancel=False): 
+        call_message = 'Call the side! ' 
+        choices = [h_emoji, t_emoji] 
+
+        if allow_cancel: 
+            call_message += f'React with {no_entry_emoji} to cancel. ' 
+
+            choices.append(no_entry_emoji) 
+
         report.add('Call the side! ') 
 
-        called_side = await self.client.prompt_for_message(report, self.member_id, choices=('heads', 'tails'), timeout=10, default_choice='heads') 
+        called_side = await self.client.prompt_for_reaction(report, self.member_id, emojis=choices, timeout=10, default_emoji=h_emoji) 
 
-        actual_side = Die.flip_coin() 
+        if called_side != no_entry_emoji: 
+            actual_side = Die.flip_coin(emojis=True) 
 
-        report.add('{} calls {}! '.format(self.name, called_side)) 
-        report.add("It's {}! ".format(actual_side)) 
+            report.add(f'{self.name} calls {Die.convert_coin_result(called_side)}! ') 
+            report.add(f"It's {Die.convert_coin_result(actual_side)}! ") 
 
-        return called_side.lower() == actual_side
+            return called_side == actual_side
+        else: 
+            return False
     
     @staticmethod
     def items_display(items_inv): 
@@ -2844,7 +2875,7 @@ thumbs_down_emoji), timeout=10, default_emoji=thumbs_down_emoji)
             report.add(f'{self.name}, will your pet take the hit? ') 
 
             reaction_emoji = await self.client.prompt_for_reaction(report, self.member_id, 
-            emojis=(thumbs_up_emoji, thumbs_down_emoji), timeout=20, default_emoji=thumbs_down_emoji) 
+            emojis=(thumbs_up_emoji, thumbs_down_emoji), timeout=120, default_emoji=thumbs_down_emoji) 
 
             # if for some reason the pet still exists and is alive after this prompt
             if reaction_emoji == thumbs_up_emoji:
@@ -3078,21 +3109,51 @@ early? ')
         await self.pet.apply_bonuses(report) 
     
     @action
-    async def regen_pet(self, report, amount): 
+    async def regen_pet_hp(self, report, amount): 
         amount = int(amount) 
 
         meat_obj, meat_amount = self.get_inv_entry(Meat) 
 
         if meat_amount >= amount: 
-            pet_food = Meat(self.client, self.channel, self.pet) 
+            final_hp_regen = Meat.hp_regen * amount
 
-            await pet_food.on_use(report, amount) 
+            self.pet.current_hp += final_hp_regen
 
+            report.add("{}'s current HP increased by {}! ".format(self.pet.name, final_hp_regen)) 
+
+            await self.pet.hp_changed(report) 
+            
             await self.lose_items(report, ((Meat, amount),)) 
 
             report.add(f'{self.name} successfully regenned their pet {self.pet.name}. ') 
         else: 
             report.add(f"{self.name}, you tried to use {amount} {Meat.name} but you only have {meat_amount}. ") 
+    
+    @action
+    async def regen_pet_shield(self, report, amount): 
+        if self.pet.current_shield > 0: 
+            amount = int(amount) 
+
+            meat_obj, meat_amount = self.get_inv_entry(Meat) 
+
+            if meat_amount >= amount: 
+                final_shield_regen = Meat.hp_regen * amount
+
+                self.pet.current_shield += final_shield_regen
+
+                report.add("{}'s current shield increased by {}! ".format(self.pet.name, final_shield_regen)) 
+
+                await self.pet.shield_changed(report) 
+                
+                await self.lose_items(report, ((Meat, amount),)) 
+
+                report.add(f'{self.name} successfully regenned their pet {self.pet.name}. ') 
+            else: 
+                report.add(f"{self.name}, you tried to use {amount} {Meat.name} but you only have {meat_amount}. ") 
+        elif self.pet.max_shield > 0: 
+            report.add(f"{self.pet.name}'s shield is depleted! They can't regen it until the fight ends! ") 
+        else: 
+            report.add(f"{self.pet.name} doesn't have shield. ") 
 
 class Forager(Player):
     name = 'Forager'
@@ -3184,7 +3245,7 @@ class Fisherman(Player):
     description = 'Lots of indentured servants' 
     specials = ('Can catch 1-star creatures without a coin flip', 'Can catch 2-star creatures with a coin flip') 
     starting_attack = 40
-    starting_items = Player.starting_items + ([Fishing_Net, 1],)
+    starting_items = Player.starting_items + ([Fishing_Net, 1],) 
 
     @action
     async def test_catch_success(self, report): 
@@ -3664,6 +3725,7 @@ class Pet(Entity, metaclass=Pet_Meta, append=False):
         if await self.can_use(report): 
             await self.on_use(report) 
     
+    @action
     async def on_death(self, report): 
         self.current_hp = 0
 
@@ -3672,6 +3734,19 @@ class Pet(Entity, metaclass=Pet_Meta, append=False):
         report.add(f'{self.name} died! ') 
 
         await self.owner.lose_pet(report) 
+    
+    @action
+    async def check_pressure(self, report): 
+        pass
+
+    @action
+    async def on_battle_end(self, report): 
+        if self.max_shield > 0 and self.current_shield < self.max_shield: 
+            self.current_shield = self.max_shield
+
+            report.add(f"{self.name}'s shield regenerated to full! ") 
+
+            await self.shield_changed(report) 
 
 class Trout(Entity):
     name = "Trout"
@@ -4066,6 +4141,10 @@ class C_Blue_Whale(Blue_Whale, Creature):
         Meat: 8, 
     }
     passive = True
+    stars = 1
+
+class P_Blue_Whale(Blue_Whale, Pet): 
+    pass
 
 class Great_White_Shark(Entity): 
     name = 'Great White Shark' 
@@ -4080,6 +4159,10 @@ class C_Great_White_Shark(Great_White_Shark, Creature):
         Meat: 20, 
     }
     passive = True
+    stars = 1
+
+class P_Great_White_Shark(Great_White_Shark, Pet): 
+    pass
 
 class Albino_Tiger_Oscar(Entity): 
     name = 'Albino Tiger Oscar' 
@@ -4092,7 +4175,11 @@ class C_Albino_Tiger_Oscar(Albino_Tiger_Oscar, Creature):
     starting_drops = {
         Platinum_Elixir: 1, 
         Meat: 8, 
-    }
+    } 
+    stars = 1
+
+class P_Albino_Tiger_Oscar(Albino_Tiger_Oscar, Pet): 
+    pass
 
 class Giant_Lionfish(Entity): 
     revenge_damage = 60
@@ -4122,7 +4209,11 @@ class C_Giant_Lionfish(Giant_Lionfish, Creature):
     starting_drops = {
         Platinum_Elixir: 1, 
         Meat: 12, 
-    }
+    } 
+    stars = 1
+
+class P_Giant_Lionfish(Giant_Lionfish, Pet): 
+    pass
 
 class Marlin(Entity): 
     name = 'Marlin' 
@@ -4137,6 +4228,10 @@ class C_Marlin(Marlin, Creature):
         Meat: 6, 
     }
     passive = True
+    stars = 1
+
+class P_Marlin(Marlin, Pet): 
+    pass
 
 class Mushroom_Fish(Entity): 
     name = 'Mushroom Fish' 
@@ -4147,6 +4242,10 @@ class Mushroom_Fish(Entity):
 
 class C_Mushroom_Fish(Mushroom_Fish, Creature): 
     starting_drops = {Meat: 6,} 
+    stars = 1
+
+class P_Mushroom_Fish(Mushroom_Fish, Pet): 
+    pass
 
 class Tiger_Oscar(Entity): 
     name = 'Tiger Oscar' 
@@ -4157,6 +4256,10 @@ class Tiger_Oscar(Entity):
 
 class C_Tiger_Oscar(Tiger_Oscar, Creature): 
     starting_drops = {Meat: 5,} 
+    stars = 1
+
+class P_Tiger_Oscar(Tiger_Oscar, Pet): 
+    pass
 
 class Barracuda(Entity): 
     name = 'Barracuda' 
@@ -4177,6 +4280,7 @@ class C_Barracuda(Barracuda, Creature):
 
     starting_drops = {Meat: 3,} 
     passive = True
+    stars = 1
 
     def __init__(self, client, channel, enemy, current_level=None):
         self.elapsed_battle_rounds = 0
@@ -4254,6 +4358,53 @@ self.drops_scaling.items()}
 
         await Creature.on_battle_round_start(self, report) 
 
+class P_Barracuda(Barracuda, Pet): 
+    def __init__(self, client, channel, owner, current_level=None, elapsed_battle_rounds=0): 
+        Pet.__init__(self, client, channel, owner, current_level=current_level) 
+
+        self.elapsed_battle_rounds = elapsed_battle_rounds
+
+        hp_increase = elapsed_battle_rounds * self.per_round_hp_increase * self.hp_multiplier
+
+        self.base_hp += hp_increase
+        self.current_hp += hp_increase
+        self.max_hp += hp_increase
+
+        attack_increase = elapsed_battle_rounds * self.per_round_attack_increase * self.attack_multiplier
+
+        self.base_attack += attack_increase
+        self.current_attack += attack_increase
+    
+    @action
+    async def on_shutdown(self, report): 
+        await Pet.on_shutdown(self, report) 
+
+        hp_decrease = elapsed_battle_rounds * self.per_round_hp_increase * self.hp_multiplier
+
+        self.base_hp -= hp_decrease
+        self.current_hp -= hp_decrease
+        self.max_hp -= hp_decrease
+
+        attack_decrease = self.elapsed_battle_rounds * self.per_round_attack_increase * self.attack_multiplier
+
+        self.base_attack -= attack_decrease
+        self.current_attack -= attack_decrease
+    
+    @action
+    async def on_turn_on(self, report): 
+        await Pet.on_turn_on(self, report) 
+
+        hp_increase = elapsed_battle_rounds * self.per_round_hp_increase * self.hp_multiplier
+
+        self.base_hp += hp_increase
+        self.current_hp += hp_increase
+        self.max_hp += hp_increase
+
+        attack_increase = self.elapsed_battle_rounds * self.per_round_attack_increase * self.attack_multiplier
+
+        self.base_attack += attack_increase
+        self.current_attack += attack_increase
+
 class Shovelnose_Guitar_Fish(Entity): 
     name = 'Shovelnose Guitar Fish' 
     description = 'Has an interesting head shape' 
@@ -4263,6 +4414,10 @@ class Shovelnose_Guitar_Fish(Entity):
 
 class C_Shovelnose_Guitar_Fish(Shovelnose_Guitar_Fish, Creature): 
     starting_drops = {Shovelnose: 1,} 
+    stars = 1
+
+class P_Shovelnose_Guitar_Fish(Shovelnose_Guitar_Fish, Pet): 
+    pass
 
 class Vortex_Fish(Entity): 
     steal_amount = 3
@@ -4281,7 +4436,7 @@ class Vortex_Fish(Entity):
         available_amounts = (amount for item, amount in target.items if amount > 0) 
         total_amount = sum(available_amounts) 
 
-        if total_amount > 3: 
+        if total_amount > self.steal_amount: 
             for i in range(self.steal_amount): 
                 report.add(target.items_display(target.items)) 
                 
@@ -4296,7 +4451,7 @@ class Vortex_Fish(Entity):
                     
                     return result and target.has_item(result) 
 
-                to_lose = await self.client.prompt_for_message(report, target.member_id, custom_check=check, timeout=120, default_choice=choices[0]) 
+                to_lose = await self.client.prompt_for_message(report, target.member_id, custom_check=check, timeout=120, default_choice=random.choice(choices)) 
 
                 item_to_lose = ttd_tools.search(items, to_lose) 
 
@@ -4345,6 +4500,10 @@ class Vortex_Fish(Entity):
 
 class C_Vortex_Fish(Vortex_Fish, Creature): 
     starting_drops = {Meat: 4,} 
+    stars = 1
+
+class P_Vortex_Fish(Vortex_Fish, Pet): 
+    pass
 
 class Largemouth_Bass(Entity): 
     name = 'Largemouth Bass' 
@@ -4355,6 +4514,10 @@ class Largemouth_Bass(Entity):
 
 class C_Largemouth_Bass(Largemouth_Bass, Creature): 
     starting_drops = {Meat: 4,} 
+    stars = 1
+
+class P_Largemouth_Bass(Largemouth_Bass, Pet): 
+    pass
 
 class Tuna(Entity): 
     name = 'Tuna' 
@@ -4365,6 +4528,10 @@ class Tuna(Entity):
 
 class C_Tuna(Tuna, Creature): 
     starting_drops = {Meat: 5,} 
+    stars = 1
+
+class P_Tuna(Tuna, Pet): 
+    pass
 
 class Moray_Eel(Entity): 
     name = 'Moray Eel' 
@@ -4375,6 +4542,10 @@ class Moray_Eel(Entity):
 
 class C_Moray_Eel(Moray_Eel, Creature): 
     starting_drops = {Slime_Coat: 1,} 
+    stars = 1
+
+class P_Moray_Eel(Moray_Eel, Pet): 
+    pass
 
 class Electric_Eel(Entity): 
     name = 'Electric Eel' 
@@ -4386,12 +4557,16 @@ class Electric_Eel(Entity):
     starting_access_levels = (Levels.Middle,) 
 
     @action
+    async def check_stun(self, report, target): 
+        pass
+
+    @action
     async def switch_hit(self, report, target): 
         await Entity.switch_hit(self, report, target) 
 
         report.add('{} attempts to stun {}! '.format(self.name, target.name)) 
 
-        stunned = not await target.call_and_flip(report) 
+        stunned = await self.check_stun(report, target) 
 
         if stunned: 
             with target.stunned(): 
@@ -4399,10 +4574,25 @@ class Electric_Eel(Entity):
 
                 await self.switch_hit(report, target) 
         else: 
-            report.add('{} failed to stun {}. '.format(self.name, target.name)) 
+            report.add("{} didn't stun {}. ".format(self.name, target.name)) 
 
 class C_Electric_Eel(Electric_Eel, Creature): 
     starting_drops = {Watt: 5,} 
+    stars = 1
+
+    @action
+    async def check_stun(self, report, target): 
+        if target.is_a(Player): 
+            to_ask = target
+        else: 
+            to_ask = target.owner
+        
+        return not await to_ask.call_and_flip(report) 
+
+class P_Electric_Eel(Electric_Eel, Pet): 
+    @action
+    async def check_stun(self, report, target): 
+        return await self.owner.call_and_flip(report, allow_cancel=True) 
 
 class Pufferfish(Entity): 
     name = 'Pufferfish' 
@@ -4416,6 +4606,7 @@ class C_Pufferfish(Pufferfish, Creature):
     
     specials = ('Gives the player {} oxygen upon death'.format(oxygen_drop),) 
     starting_drops = {Pufferfish_Corpse: 1,} 
+    stars = 1
 
     @action
     async def drop_stuff(self, report, drop_to): 
@@ -4426,6 +4617,9 @@ class C_Pufferfish(Pufferfish, Creature):
         report.add("{}'s current oxygen increased by {}! ".format(drop_to.name, self.oxygen_drop)) 
 
         await drop_to.oxygen_changed(report) 
+
+class P_Pufferfish(Pufferfish, Pet): 
+    pass
 
 class Great_Diving_Minnow(Entity): 
     name = 'Great Diving Minnow' 

@@ -21,15 +21,23 @@ class Command:
     def __init__(self, client, channel): 
         self.client = client
         self.channel = channel
-        self.total_args = list(self.required_args) + ['[{}]'.format(arg) for arg in self.optional_args] 
-
-        #debug(self.total_args) 
+        self.total_args = list(self.required_args) + list(self.optional_args) 
 
         if self.indefinite_args: 
-            self.total_args[-1] = '*{}'.format(self.total_args[-1]) 
+            self.total_args[-1] = f'*{self.total_args[-1]}' 
+        
+        for index in range(len(self.total_args)): 
+            val = self.total_args[index] 
+
+            if val in self.required_args: 
+                self.total_args[index] = f'({val})' 
+            else: 
+                self.total_args[index] = f'[{val}]' 
+
+        #debug(self.total_args) 
         
         prefix = self.client.prefix(self.channel) 
-        args_str = format_iterable(self.total_args, formatter=' {}', sep=' ') 
+        args_str = format_iterable(self.total_args, formatter=' {}', sep='') 
         self.syntax = prefix + self.name + args_str
 
     '''
@@ -54,9 +62,10 @@ class Command:
     def help_embed(self): 
         embed = discord.Embed(title=self.name, type='rich', description=self.description) 
 
-        embed.add_field(name='Usage', value='''`{}` 
+        embed.add_field(name='Usage', value=f'''`{self.syntax}` 
 
-`[` and `]` denote optional arguments; `*` denotes "indefinite" arguments (that is, you can put as many arguments as you want there) '''.format(self.syntax), inline=False) 
+`(` and `)` mean required arguments, `[` and `]` mean optional arguments; `*` means "unlimited" arguments (you can put as many arguments as you want there) ''', 
+inline=False) 
 
         if self.special_note is not None: 
             embed.add_field(name='Important note', value=self.special_note, inline=False) 
